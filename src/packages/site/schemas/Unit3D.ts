@@ -234,6 +234,7 @@ export const SchemaMetadata: Partial<ISiteMetadata> = {
   },
 
   userInfo: {
+    pickLast: ["name"],
     selectors: {
       // '/'
       name: {
@@ -245,6 +246,11 @@ export const SchemaMetadata: Partial<ISiteMetadata> = {
             return queryMatch && queryMatch.length >= 2 ? queryMatch[1] : "";
           },
         ],
+      },
+      // "/users/$user.name$"
+      id: {
+        selector: idTrans.map((x) => `td:contains('${x}') + td`),
+        filters: [(query: string) => parseInt(query || "0")],
       },
       uploaded: {
         selector: ["span:has( > i.fa-arrow-up)", "li.ratio-bar__uploaded a:has( > i.fa-arrow-up)"],
@@ -270,12 +276,6 @@ export const SchemaMetadata: Partial<ISiteMetadata> = {
         selector: ["span:has( > i.fa-download)", "li.ratio-bar__leeching a:has( > i.fa-download)"],
         filters: [{ name: "parseNumber" }],
       },
-
-      // "/users/$user.name$"
-      id: {
-        selector: idTrans.map((x) => `td:contains('${x}') + td`),
-        filters: [(query: string) => parseInt(query || "0")],
-      },
       seedingSize: {
         // table.table-condensed:first
         selector: [
@@ -297,7 +297,7 @@ export const SchemaMetadata: Partial<ISiteMetadata> = {
       },
       messageCount: {
         text: 0,
-        selector: ['a[href*="/mail"] .point', "ul.top-nav__icon-bar circle"],
+        selector: ['a[href*="/mail"] .point, a[href*="/notifications"] .point, ul.top-nav__icon-bar circle'],
         elementProcess: () => 11, // 并不能直接知道还有多少个消息未读，所以置为11，会直接出线红点而不是具体数字
       },
       uploads: {
