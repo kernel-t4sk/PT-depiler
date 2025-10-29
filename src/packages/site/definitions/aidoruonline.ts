@@ -1,3 +1,6 @@
+/**
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/aidoruonline.yml
+ */
 import { omit, toMerged } from "es-toolkit";
 import {
   ETorrentStatus,
@@ -197,7 +200,7 @@ export const siteMetadata: ISiteMetadata = {
       levelName: { selector: ["td.prof-lbl:contains('User Class:') + td"] },
       ratio: {
         selector: ["td.prof-lbl:contains('Ratio:') + td"],
-        filters: [(query: string) => (query.trim() === "---" ? Infinity : parseFloat(query))],
+        filters: [(query: string) => (query.trim() === "---" ? -1 : parseFloat(query))],
       },
       uploads: {
         selector: ["td.prof-lbl:contains('Uploads:') + td"],

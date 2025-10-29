@@ -149,7 +149,8 @@
     "snatches": "Completed Torrents",
     "posts": "Posted Threads",
     "hnrPreWarning": "PreWarning H&R Count",
-    "hnrUnsatisfied": "Unsatisfied H&R Count"
+    "hnrUnsatisfied": "Unsatisfied H&R Count",
+    "adoptions": "Adopted Torrents"
   },
   "resultParseStatus": {
     "unknownError": "Unknown Error!",
@@ -234,6 +235,7 @@
       "updateAtFormatAsAlive": "Display update At as Relative Time",
       "showIntervalAsDate": "Display level requirement time as date format",
       "simplifyBonusNumbers": "Simplify Bonus Numbers",
+      "showBonusNeededInterval": "Show estimated bonus time in level requirements",
       "multiOpen": "Open in batch",
       "viewTimeline": "Timeline",
       "viewStatistic": "Data Chart",
@@ -252,6 +254,7 @@
       "levelName": "Level",
       "userData": "Data",
       "trueUserData": "True Data",
+      "invites": "Invites",
       "joinTime": "Join Time",
       "updateAt": "Updated At",
       "action": {
@@ -524,7 +527,8 @@
     "export": "Export",
     "table": {
       "enable": "Enabled ?",
-      "default": "Default ?"
+      "default": "Default ?",
+      "autoGenerate": "Auto Generate"
     },
     "edit": {
       "title": "Customize @:SetSearchSolution.solution",
@@ -534,6 +538,12 @@
     },
     "delete": {
       "text": "Are you sure to delete these {0} @:SetSearchSolution.solution ?"
+    },
+    "spDialog": {
+      "noDefNotice": "This site does not define any search categories, please go to help!",
+      "notice": "It is not recommended to set it here, and it is recommended to configure your user CP in site or use search solution",
+      "selectAllNotice": "(Notice: In most cases, you don't need to select all search terms! )",
+      "title": "Set default search params for Site {name}"
     }
   },
   "SetSite": {
@@ -581,12 +591,6 @@
       ],
       "oneClickImport": "One-Click Import Sites"
     },
-    "spDialog": {
-      "noDefNotice": "This site does not define any search categories, please go to help!",
-      "notice": "It is not recommended to set it here, and it is recommended to configure your user CP in site or use search solution",
-      "selectAllNotice": "(Notice: In most cases, you don't need to select all search terms! )",
-      "title": "Set default search params for Site {name}"
-    },
     "oneClickImportDialog": {
       "title": "One-Click Import Sites",
       "alert1": "This operation will attempt to import the sites you select with default configurations. Please ensure you have logged into these sites in your browser. The import process cannot be interrupted, please wait patiently.",
@@ -623,14 +627,14 @@
     "enableAutoRefresh": "Enable background auto-refresh?",
     "autoRefresh": {
       "every": "Every",
-      "hoursLabel": "hours, auto-refresh today's",
+      "hoursLabel": "hours auto-refresh today's",
       "unrefreshedSite": "unrefreshed",
-      "ofSites": "sites",
+      "ofSites": "sites.",
       "retryOnFail": "If refresh fails, retry",
       "times": "times, with an interval of",
       "minutes": "minutes.",
       "lastFlushTime": "Last refresh time:",
-      "nextFlushTime": "Next refresh time:"
+      "nextFlushTime": "Next refresh check time:"
     },
     "alwaysPickLastUserInfo": "",
     "showDeadSite": "Show sites marked as dead (isDead) in the overview",

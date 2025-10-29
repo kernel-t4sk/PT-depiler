@@ -1,5 +1,5 @@
-import { EResultParseStatus, type ISiteMetadata, type IUserInfo } from "../types";
-import Unit3D, { SchemaMetadata } from "../schemas/Unit3D.ts";
+import { type ISiteMetadata } from "../types";
+import { SchemaMetadata } from "../schemas/Unit3D.ts";
 
 export const siteMetadata: ISiteMetadata = {
   ...SchemaMetadata,
@@ -15,35 +15,6 @@ export const siteMetadata: ISiteMetadata = {
   schema: "Unit3D",
 
   urls: ["uggcf://nvgure.pp/"],
-
-  userInfo: {
-    selectors: {
-      ...SchemaMetadata.userInfo!.selectors,
-      name: {
-        selector: ["a[href*='/users/']:first"],
-        attr: "href",
-        filters: [
-          (query: string) => {
-            const queryMatch = query.match(/users\/(.+)\//);
-            return queryMatch && queryMatch.length >= 2 ? queryMatch[1] : "";
-          },
-        ],
-      },
-      levelName: {
-        selector: "div.panel__body a.user-tag__link",
-        attr: "title",
-      },
-      joinTime: {
-        selector: ["time"],
-        attr: "datetime",
-        filters: [{ name: "parseFuzzyTime" }],
-      },
-      bonusPerHour: {
-        selector: [".panelV2 dl.key-value dd:nth(2)"],
-        filters: [{ name: "parseNumber" }],
-      },
-    },
-  },
 
   levelRequirements: [
     {
@@ -204,21 +175,6 @@ export const siteMetadata: ISiteMetadata = {
   search: {
     ...SchemaMetadata.search,
     skipNonLatinCharacters: true,
-    requestConfig: {
-      url: "/torrents",
-    },
-    keywordPath: "params.name",
-    advanceKeywordParams: {
-      imdb: {
-        requestConfigTransformer: ({ requestConfig: config }) => {
-          if (config?.params?.name) {
-            config.params.imdbId = config.params.name;
-            delete config.params.name;
-          }
-          return config!;
-        },
-      },
-    },
     selectors: {
       ...SchemaMetadata.search!.selectors,
       tags: [
@@ -232,25 +188,3 @@ export const siteMetadata: ISiteMetadata = {
     },
   },
 };
-
-export default class Aither extends Unit3D {
-  public override async getUserInfoResult(lastUserInfo: Partial<IUserInfo> = {}): Promise<IUserInfo> {
-    let flushUserInfo = await super.getUserInfoResult(lastUserInfo);
-    if (flushUserInfo?.status === EResultParseStatus.success && flushUserInfo?.name) {
-      // 获取时魔
-      flushUserInfo.bonusPerHour = await this.getUserBonusPerHour(flushUserInfo.name);
-    }
-    return flushUserInfo;
-  }
-
-  protected async getUserBonusPerHour(name: string): Promise<number> {
-    const { data: document } = await this.request<Document>(
-      {
-        url: `/users/${name}/earnings`,
-        responseType: "document",
-      },
-      true,
-    );
-    return this.getFieldData(document, this.metadata.userInfo?.selectors?.bonusPerHour!);
-  }
-}

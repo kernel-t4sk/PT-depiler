@@ -46,6 +46,7 @@ const fullTableHeader = reactive([
   { title: t("levelRequirement.seedingSize"), key: "seedingSize", align: "end" },
   { title: t("levelRequirement.bonus"), key: "bonus", align: "end" },
   { title: t("levelRequirement.bonusPerHour"), key: "bonusPerHour", align: "end" },
+  { title: t("MyData.table.invites"), key: "invites", align: "end" }, // 默认不显示
   { title: t("MyData.table.joinTime"), key: "joinTime", align: "center" },
   { title: t("MyData.table.updateAt"), key: "updateAt", align: "center" },
   { title: t("common.action"), key: "action", align: "center", sortable: false, props: { disabled: true } },
@@ -148,6 +149,21 @@ async function multiOpen() {
   }
 }
 
+async function multiFlush() {
+  let flushSiteIds: TSiteID[] = tableSelected.value;
+  if (flushSiteIds.length === 0) {
+    if (confirm("刷新全部站点用户信息？（未选择任何站点时，默认刷新全部站点）")) {
+      flushSiteIds = tableData.value.map((item) => item.site);
+    }
+  }
+
+  if (flushSiteIds.length > 0) {
+    flushSiteLastUserInfo(flushSiteIds);
+  } else {
+    runtimeStore.showSnakebar("未选择任何站点，取消刷新", { color: "warning" });
+  }
+}
+
 function viewTimeline() {
   router.push({
     name: "UserDataTimeline",
@@ -188,11 +204,10 @@ function toggleNumberSimplification() {
 
         <NavButton
           v-else
-          :disabled="tableSelected.length === 0"
           :text="t('MyData.index.flushSelectSite')"
           color="green"
           icon="mdi-cached"
-          @click="() => flushSiteLastUserInfo(tableSelected)"
+          @click="multiFlush"
         />
 
         <NavButton
@@ -602,6 +617,10 @@ function toggleNumberSimplification() {
               : "-"
           }}
         </span>
+      </template>
+
+      <template #item.invites="{ item }">
+        <span class="text-no-wrap">{{ typeof item.invites !== "undefined" ? item.invites : "-" }}</span>
       </template>
 
       <!-- 入站时间 -->

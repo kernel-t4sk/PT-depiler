@@ -83,6 +83,17 @@ function formatIntervalDate(duration: number | isoDuration): string {
     return "";
   }
 }
+
+function formatBonus(bonusKey: "bonus" | "seedingBonus") {
+  return (
+    (configStore.myDataTableControl.simplifyBonusNumbers
+      ? simplifyNumber(levelRequirement[bonusKey]!)
+      : formatNumber(levelRequirement[bonusKey]!)) +
+    (configStore.myDataTableControl.showBonusNeededInterval && levelRequirement[`${bonusKey}NeededInterval`]
+      ? ` (~${levelRequirement[`${bonusKey}NeededInterval`]})`
+      : "")
+  );
+}
 </script>
 
 <template>
@@ -165,12 +176,8 @@ function formatIntervalDate(duration: number | isoDuration): string {
       :title="formatNumber(levelRequirement.bonus)"
       @dblclick="toggleNumberSimplification"
       style="cursor: pointer; user-select: none"
-      >{{
-        (configStore.myDataTableControl.simplifyBonusNumbers
-          ? simplifyNumber(levelRequirement.bonus)
-          : formatNumber(levelRequirement.bonus)) +
-        (levelRequirement.bonusNeededInterval ? ` (${levelRequirement.bonusNeededInterval})` : "")
-      }}</span
+    >
+      {{ formatBonus("bonus") }} </span
     >;
   </template>
 
@@ -185,12 +192,8 @@ function formatIntervalDate(duration: number | isoDuration): string {
       :title="formatNumber(levelRequirement.seedingBonus)"
       @dblclick="toggleNumberSimplification"
       style="cursor: pointer; user-select: none"
-      >{{
-        (configStore.myDataTableControl.simplifyBonusNumbers
-          ? simplifyNumber(levelRequirement.seedingBonus)
-          : formatNumber(levelRequirement.seedingBonus)) +
-        (levelRequirement.seedingBonusNeededInterval ? ` (${levelRequirement.seedingBonusNeededInterval})` : "")
-      }}</span
+    >
+      {{ formatBonus("seedingBonus") }} </span
     >;
   </template>
 
@@ -217,6 +220,11 @@ function formatIntervalDate(duration: number | isoDuration): string {
   <template v-if="levelRequirement.posts">
     <v-icon :title="t('levelRequirement.posts')" color="green darken-4" icon="mdi-note-plus" small />
     {{ formatNumber(levelRequirement.posts, { minimumFractionDigits: 0 }) }};
+  </template>
+
+  <template v-if="levelRequirement.adoptions">
+    <v-icon :title="t('levelRequirement.adoptions')" color="green-darken-4" icon="mdi-hand-extended" small />
+    {{ formatNumber(levelRequirement.adoptions, { minimumFractionDigits: 0 }) }};
   </template>
 </template>
 
