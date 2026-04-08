@@ -16,9 +16,14 @@ export const siteMetadata: ISiteMetadata = {
   tags: ["综合", "短剧", "影视"],
   timezoneOffset: "+0800",
   collaborator: ["0X0000005"],
+
   type: "private",
   schema: "NexusPHP",
+
   urls: ["uggcf://cg.ntficg.pa/", "uggcf://jjj.ntficg.pbz/", "uggcf://arj.ntficg.pa/"],
+
+  officialGroupPattern: [/AGSV(PT|E|WEB|REMUX|Rip|TV|DIY|MUS)?$/i],
+
   search: {
     ...SchemaMetadata.search,
     selectors: {
@@ -66,6 +71,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "120GB",
       ratio: 1.55,
       seedingBonus: 80000,
+      privilege: "可以得到一个邀请名额；Elite User及以上用户封存账号后不会被删除。  ",
     },
     {
       id: 3,
@@ -75,6 +81,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "300GB",
       ratio: 2.05,
       seedingBonus: 150000,
+      privilege: "可以在做种/下载/发布的时候选择匿名模式。",
     },
     {
       id: 4,
@@ -94,6 +101,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "750GB",
       ratio: 4.05,
       seedingBonus: 800000,
+      isKept: true,
       privilege: "永远保留账号；查看其它用户的评论、帖子历史",
     },
     {
@@ -104,6 +112,8 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "1TB",
       ratio: 5.05,
       seedingBonus: 1400000,
+      isKept: true,
+      privilege: "可以更新过期的外部信息；可以查看Extreme User论坛。  ",
     },
     {
       id: 7,
@@ -113,6 +123,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "1.5TB",
       ratio: 6.05,
       seedingBonus: 2200000,
+      isKept: true,
       privilege: "首次升级至此等级的用户将获得2个邀请名额。",
     },
     {
@@ -123,6 +134,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "3TB",
       ratio: 7.05,
       seedingBonus: 3200000,
+      isKept: true,
       privilege: "首次升级至此等级的用户将获得2个邀请名额。",
     },
   ],

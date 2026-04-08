@@ -79,6 +79,7 @@ const levelRequirements: ISiteMetadata["levelRequirements"] = [
     name: "Veteran User",
     nameAka: ["妙蛙花"],
     interval: "P52W",
+    isKept: true,
     privilege: "得到4个邀请名额；可以查看其它用户的评论、帖子历史。Veteran User及以上用户会永远保留账号。",
     alternative: [
       { seedingBonus: 200000, ratio: 1.0, uploads: 500 },
@@ -91,6 +92,7 @@ const levelRequirements: ISiteMetadata["levelRequirements"] = [
     name: "Extreme User",
     nameAka: ["mega妙蛙花"],
     interval: "P60W",
+    isKept: true,
     privilege: "得到4个邀请名额；可以更新过期的外部信息。",
     alternative: [
       { seedingBonus: 280000, ratio: 1.0, uploads: 650 },
@@ -103,6 +105,7 @@ const levelRequirements: ISiteMetadata["levelRequirements"] = [
     name: "Ultimate User",
     nameAka: ["极巨化妙蛙花"],
     interval: "P100W",
+    isKept: true,
     privilege: "得到5个邀请名额。",
     alternative: [
       { seedingBonus: 400000, ratio: 1.0, uploads: 800 },
@@ -114,6 +117,7 @@ const levelRequirements: ISiteMetadata["levelRequirements"] = [
     groupType: "user",
     name: "SVIP",
     nameAka: ["闪光妙蛙花"],
+    isKept: true,
     privilege: "网站元老用户，和VIP权限完全相同，免除自动降级，但计算下载量。",
   },
   {
@@ -339,6 +343,7 @@ export const siteMetadata: ISiteMetadata = {
   aka: ["青蛙PT"],
   description: "慈善性质的非盈利的资源分享网站。",
   tags: ["综合", "影视", "动漫", "儿童区", "纪录片"],
+  type: "private",
 
   urls: [
     "uggcf://jjj.dvatjncg.pbz/",
@@ -347,6 +352,8 @@ export const siteMetadata: ISiteMetadata = {
     "uggcf://dvatjncg.pbz/", // 增加一个和ptpp中 host 一样的url （经过实测也能访问）
   ],
   collaborator: ["Eason Wong"],
+
+  officialGroupPattern: [/(FROG|FROGE|FROGWeb)$/i],
 
   levelRequirements,
   category,

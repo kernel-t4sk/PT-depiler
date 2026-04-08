@@ -1,15 +1,21 @@
 <script setup lang="ts">
 import { ref, computed, inject } from "vue";
+import { useI18n } from "vue-i18n";
 import { useWindowSize } from "@vueuse/core";
 import { ETorrentStatus, ITorrent } from "@ptd/site";
-import type { DataTableHeader } from "vuetify/lib/components/VDataTable/types";
+import type { DataTableHeader } from "vuetify";
 
 import { formatDate, formatSize } from "@/options/utils.ts";
 import { sendMessage } from "@/messages.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
+import { useMetadataStore } from "@/options/stores/metadata.ts";
+
+import type { IRemoteDownloadDialogData } from "../types.ts";
 
 import NavButton from "@/options/components/NavButton.vue";
-import SimpleTorrentTitleTd from "@/content-script/app/components/SimpleTorrentTitleTd.vue";
+import TorrentTitleTd from "@/options/components/TorrentTitleTd.vue";
+
+const { t } = useI18n();
 
 const showDialog = defineModel<boolean>();
 
@@ -20,17 +26,18 @@ const { torrentItems } = defineProps<{
 }>();
 
 const runtimeStore = useRuntimeStore();
+const metadataStore = useMetadataStore();
 
 const tableHeaders = computed(
   () =>
     [
-      { title: "分类", key: "category", align: "center", maxWidth: 60 },
-      { title: "标题", key: "title", align: "start", maxWidth: 400 },
-      { title: "大小", key: "size", align: "end", minWidth: 60 },
-      { title: "上传", key: "seeders", align: "end", minWidth: 40 },
-      { title: "下载", key: "leechers", align: "end", minWidth: 40 },
-      { title: "完成", key: "completed", align: "end", minWidth: 40 },
-      { title: "发布于(≈)", key: "time", align: "center", minWidth: 80 },
+      { title: t("SearchEntity.index.table.category"), key: "category", align: "center", maxWidth: 60 },
+      { title: t("SearchEntity.index.table.title"), key: "title", align: "start", maxWidth: 400 },
+      { title: t("SearchEntity.index.table.size"), key: "size", align: "end", minWidth: 60 },
+      { title: t("SearchEntity.index.table.seeders"), key: "seeders", align: "end", minWidth: 40 },
+      { title: t("SearchEntity.index.table.leechers"), key: "leechers", align: "end", minWidth: 40 },
+      { title: t("SearchEntity.index.table.completed"), key: "completed", align: "end", minWidth: 40 },
+      { title: t("SearchEntity.index.table.time"), key: "time", align: "center", minWidth: 80 },
     ] as DataTableHeader[],
 );
 
@@ -46,7 +53,7 @@ const localDownloadMultiStatus = ref<boolean>(false);
 async function handleLocalDownloadMulti() {
   localDownloadMultiStatus.value = true;
   for (const torrent of selectedTorrents.value) {
-    await sendMessage("downloadTorrentToLocalFile", { torrent });
+    await sendMessage("downloadTorrent", { torrent, downloaderId: "local" });
   }
   localDownloadMultiStatus.value = false;
 }
@@ -63,18 +70,19 @@ async function handleLinkCopyMulti() {
     }
 
     await navigator.clipboard.writeText(downloadUrls.join("\n").trim());
-    runtimeStore.showSnakebar("下载链接已复制到剪贴板", { color: "success" });
+    runtimeStore.showSnakebar(t("contentScript.copyLinkSuccess"), { color: "success" });
   } catch (e) {
-    runtimeStore.showSnakebar("复制下载链接失败", { color: "error" });
+    runtimeStore.showSnakebar(t("contentScript.copyLinkFailed"), { color: "error" });
   } finally {
     linkCopyMultiStatus.value = false;
   }
 }
 
-const remoteDownloadDialogData = inject<{ show: boolean; torrents: ITorrent[] }>("remoteDownloadDialogData")!;
+const remoteDownloadDialogData = inject<IRemoteDownloadDialogData>("remoteDownloadDialogData")!;
 
-function handleRemoteDownloadMulti() {
+function handleRemoteDownloadMulti(isDefaultSend = false) {
   remoteDownloadDialogData.torrents = selectedTorrents.value;
+  remoteDownloadDialogData.isDefaultSend = isDefaultSend;
   remoteDownloadDialogData.show = true;
 }
 
@@ -101,15 +109,27 @@ function enterDialog() {
     <v-card>
       <v-card-title class="pa-0">
         <v-toolbar color="blue-grey-darken-2">
-          <v-toolbar-title> 为 {{ torrentItems.length }} 个种子自定义批量操作行为 </v-toolbar-title>
+          <v-toolbar-title>{{
+            t("contentScript.AdvanceListModuleDialog.title", [torrentItems.length])
+          }}</v-toolbar-title>
           <template #append>
-            <v-btn icon="mdi-close" @click="showDialog = false" />
+            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
           </template>
         </v-toolbar>
       </v-card-title>
       <v-card-text class="overflow-y-hidden">
-        <NavButton icon="mdi-inbox-arrow-up" text="勾选上传行" color="light-blue" @click="handleSelectSeeders" />
-        <NavButton icon="mdi-download-off" text="勾选未下载过" color="light-blue" @click="handleSelectNotSeeding" />
+        <NavButton
+          icon="mdi-inbox-arrow-up"
+          :text="t('contentScript.AdvanceListModuleDialog.selectSeeders')"
+          color="light-blue"
+          @click="handleSelectSeeders"
+        />
+        <NavButton
+          icon="mdi-download-off"
+          :text="t('contentScript.AdvanceListModuleDialog.selectNotSeeding')"
+          color="light-blue"
+          @click="handleSelectNotSeeding"
+        />
         <v-data-table-virtual
           v-model="selectedTorrentIds"
           :headers="tableHeaders"
@@ -122,7 +142,7 @@ function enterDialog() {
           show-select
         >
           <template #item.title="{ item }">
-            <SimpleTorrentTitleTd :item="item" />
+            <TorrentTitleTd :item="item" :show-social="false" />
           </template>
 
           <!-- 种子大小 -->
@@ -140,16 +160,19 @@ function enterDialog() {
       <v-divider />
       <v-card-actions>
         <v-spacer />
-        <span v-show="hasSelectedTorrent"
-          >已选中：{{ selectedTorrentsCount }} 个种子，总大小：{{ formatSize(selectedTorrentsSize) }}</span
-        >
+        <span v-show="hasSelectedTorrent">{{
+          t("contentScript.AdvanceListModuleDialog.selectedInfo", [
+            selectedTorrentsCount,
+            formatSize(selectedTorrentsSize),
+          ])
+        }}</span>
 
         <NavButton
           :disabled="!hasSelectedTorrent"
           :loading="localDownloadMultiStatus"
           color="light-blue"
           icon="mdi-content-save-all"
-          text="本地下载"
+          :text="t('downloaderLabel.localDownload')"
           @click="handleLocalDownloadMulti"
         />
 
@@ -158,7 +181,7 @@ function enterDialog() {
           :loading="linkCopyMultiStatus"
           color="light-blue"
           icon="mdi-content-copy"
-          text="复制链接"
+          :text="t('contentScript.copyLink')"
           @click="handleLinkCopyMulti"
         />
 
@@ -166,9 +189,19 @@ function enterDialog() {
           :disabled="!hasSelectedTorrent"
           key="remote_download_multi"
           color="light-blue"
-          icon="mdi-tray-arrow-down"
-          text="推送到..."
-          @click="handleRemoteDownloadMulti"
+          icon="mdi-cloud-download"
+          :text="t('contentScript.pushTo')"
+          @click="() => handleRemoteDownloadMulti()"
+        />
+
+        <NavButton
+          v-if="metadataStore.defaultDownloader?.id"
+          key="remote_download_multi_default"
+          :disabled="!hasSelectedTorrent"
+          color="light-blue"
+          icon="mdi-download"
+          :text="t('contentScript.pushToDefault')"
+          @click="() => handleRemoteDownloadMulti(true)"
         />
       </v-card-actions>
     </v-card>

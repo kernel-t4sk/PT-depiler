@@ -2,9 +2,8 @@
 import { computed, ref, shallowRef, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
-import { useDisplay } from "vuetify";
+import { useDisplay, type DataTableHeader } from "vuetify";
 import { EResultParseStatus, ETorrentStatus } from "@ptd/site";
-import type { DataTableHeader } from "vuetify/lib/components/VDataTable/types";
 
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
@@ -13,14 +12,15 @@ import { formatDate, formatSize, formatTimeAgo } from "@/options/utils.ts";
 import type { ISearchResultTorrent } from "@/shared/types.ts";
 
 import SiteName from "@/options/components/SiteName.vue";
-import SiteFavicon from "@/options/components/SiteFavicon.vue";
+import SiteFavicon from "@/options/components/SiteFavicon/Index.vue";
 import TorrentTitleTd from "@/options/components/TorrentTitleTd.vue";
-import TorrentProcessTd from "./TorrentProcessTd.vue";
+
 import ActionTd from "./ActionTd.vue";
+import TorrentProcessTd from "./TorrentProcessTd.vue";
+import QuickFilterNotice from "./QuickFilterNotice.vue";
 import SearchStatusDialog from "./SearchStatusDialog.vue";
 import SaveSnapshotDialog from "./SaveSnapshotDialog.vue";
 import AdvanceFilterGenerateDialog from "./AdvanceFilterGenerateDialog.vue";
-import QuickSiteFilterSelector from "./QuickSiteFilterSelector.vue";
 
 // 主要助手方法
 import { tableCustomFilter } from "./utils/filter";
@@ -40,13 +40,15 @@ const showSaveSnapshotDialog = ref<boolean>(false);
 const fullTableHeader = computed(
   () =>
     [
-      { title: t("SearchEntity.index.table.site"), key: "site", align: "center", props: { disabled: true } },
+      { title: t("common.site"), key: "site", align: "center", props: { disabled: true } },
       {
         title: t("SearchEntity.index.table.title"),
         key: "title",
         align: "start",
         minWidth: "30rem",
-        ...(display.smAndDown.value ? { maxWidth: "32vw" } : {}),
+        ...(configStore.searchEntifyControl.limitTorrentTitleTdWidth || display.smAndDown.value
+          ? { maxWidth: "32vw" }
+          : {}),
         props: { disabled: true },
       },
       { title: t("SearchEntity.index.table.category"), key: "category", align: "center" },
@@ -72,29 +74,11 @@ const tableHeader = computed(() => {
   ) as DataTableHeader[];
 });
 
-const { tableFilterRef, tableWaitFilterRef, tableFilterFn, resetAdvanceFilterDictFn } = tableCustomFilter;
+const { tableFilterRef, tableWaitFilterRef, tableFilterFn, buildAdvanceItemPropsFn, buildFilterDictFn } =
+  tableCustomFilter;
 
 // 使用 shallowRef 优化：种子对象数组不需要深度响应式，提升性能
 const tableSelectedRaw = shallowRef<ISearchResultTorrent[]>([]);
-
-// 优化后的选中种子信息计算：直接基于选中对象计算
-const selectedTorrentsInfo = computed(() => {
-  const selectedObjects = tableSelectedRaw.value;
-  const count = selectedObjects.length;
-
-  // 如果没有选中任何项，直接返回
-  if (count === 0) {
-    return { count: 0, totalSize: 0 };
-  }
-
-  // 直接计算选中对象的总大小，避免遍历查找
-  const totalSize = selectedObjects.reduce((sum, torrent) => sum + (torrent.size || 0), 0);
-
-  return {
-    count,
-    totalSize,
-  };
-});
 
 watch(
   () => route.query,
@@ -104,7 +88,7 @@ watch(
         data && (runtimeStore.search = { ...data, snapshot: newParams.snapshot as string });
         // 如果启用了快速站点筛选，则重置一下筛选器，以防止快速站点筛选中无站点数据
         if (configStore.searchEntity.quickSiteFilter) {
-          resetAdvanceFilterDictFn();
+          buildAdvanceItemPropsFn();
         }
       });
     } else {
@@ -146,6 +130,8 @@ function cancelSearchQueue() {
     if (runtimeStore.search.searchPlan[key]!.status === EResultParseStatus.waiting) {
       // @ts-ignore
       runtimeStore.search.searchPlan[key]!.status = EResultParseStatus.passParse;
+      // @ts-ignore
+      runtimeStore.search.searchPlan[key]!.statusMsg = "i18n.userCancel";
     }
   }
 
@@ -160,9 +146,6 @@ function cancelSearchQueue() {
         {{ t("SearchEntity.index.alert.enterKeyword") }}
       </template>
       <template v-else>
-        <v-btn class="mr-2" color="primary" size="small" @click="showSearchStatusDialog = true">
-          {{ t("SearchEntity.index.alert.statusButton") }}
-        </v-btn>
         <template v-if="runtimeStore.search.isSearching">
           <template v-if="isSearchingParsed">
             {{ t("SearchEntity.index.alert.paused") }}
@@ -196,9 +179,15 @@ function cancelSearchQueue() {
         </template>
 
         <v-spacer />
-        <v-divider vertical class="mx-2" />
 
-        <div id="ptd-search-entity-status">
+        <v-btn
+          id="ptd-search-entity-status"
+          :title="t('SearchEntity.index.alert.searchStatus')"
+          class="mr-2"
+          color="primary"
+          size="small"
+          @click="showSearchStatusDialog = true"
+        >
           <template v-if="searchPlanStatus.success > 0">
             <v-icon size="x-small" class="mr-1" icon="mdi-check" />{{ searchPlanStatus.success }}
           </template>
@@ -208,7 +197,7 @@ function cancelSearchQueue() {
           <template v-if="searchPlanStatus.queued > 0">
             <v-icon size="x-small" color="blue-grey" class="mr-1" icon="mdi-clock" />{{ searchPlanStatus.queued }}
           </template>
-        </div>
+        </v-btn>
       </template>
     </v-alert-title>
   </v-alert>
@@ -279,7 +268,12 @@ function cancelSearchQueue() {
         <v-menu>
           <template v-slot:activator="{ props }">
             <v-btn-group size="small" variant="text">
-              <v-btn color="blue" icon="mdi-cog" v-bind="props" />
+              <v-btn
+                :title="t('SearchEntity.index.action.displayPreferences')"
+                color="blue"
+                icon="mdi-cog"
+                v-bind="props"
+              />
             </v-btn-group>
           </template>
           <v-list>
@@ -328,7 +322,6 @@ function cancelSearchQueue() {
         <v-spacer />
         <v-text-field
           v-model="tableWaitFilterRef"
-          :disabled="runtimeStore.search.searchResult.length === 0"
           append-icon="mdi-magnify"
           clearable
           density="compact"
@@ -338,26 +331,14 @@ function cancelSearchQueue() {
           prepend-inner-icon="mdi-filter"
           single-line
           @click:prepend-inner="showAdvanceFilterGenerateDialog = true"
+          @update:model-value="(val) => buildFilterDictFn(val)"
         />
       </v-row>
     </v-card-title>
 
     <v-card-text class="pt-2 pb-0">
-      <!-- 站点筛选器 -->
-      <QuickSiteFilterSelector v-if="configStore.searchEntity.quickSiteFilter" class="mb-2" />
-
-      <!-- 选中种子信息条 -->
-      <v-alert v-if="selectedTorrentsInfo.count > 0" class="pa-3 mb-0" color="info" density="compact" variant="tonal">
-        <div class="d-flex align-center">
-          <v-chip color="primary" size="small" variant="outlined">
-            <v-icon icon="mdi-checkbox-marked-circle" start />
-            {{ t("SearchEntity.index.selectedTorrents", [selectedTorrentsInfo.count]) }}
-            <v-divider class="mx-2" vertical />
-            <v-icon icon="mdi-harddisk" />
-            {{ formatSize(selectedTorrentsInfo.totalSize) }}
-          </v-chip>
-        </div>
-      </v-alert>
+      <!-- 站点筛选器、已选种子等提示信息 -->
+      <QuickFilterNotice :selected-torrents="tableSelectedRaw" />
 
       <v-data-table
         id="ptd-search-entity-table"
@@ -448,12 +429,9 @@ function cancelSearchQueue() {
     </v-card-text>
   </v-card>
 
-  <AdvanceFilterGenerateDialog
-    v-model="showAdvanceFilterGenerateDialog"
-    @update:table-filter="(v) => (tableWaitFilterRef = v)"
-  />
-  <SearchStatusDialog v-model="showSearchStatusDialog"></SearchStatusDialog>
-  <SaveSnapshotDialog v-model="showSaveSnapshotDialog"></SaveSnapshotDialog>
+  <AdvanceFilterGenerateDialog v-model="showAdvanceFilterGenerateDialog" />
+  <SearchStatusDialog v-model="showSearchStatusDialog" />
+  <SaveSnapshotDialog v-model="showSaveSnapshotDialog" />
 </template>
 
 <style scoped lang="scss">

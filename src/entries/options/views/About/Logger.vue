@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, shallowRef, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import type { DataTableHeader } from "vuetify/lib/components/VDataTable/types";
+import type { DataTableHeader } from "vuetify";
 
 import { sendMessage } from "@/messages.ts";
 import { ILoggerItem } from "@/shared/types.ts";
@@ -58,6 +58,7 @@ onMounted(() => {
     <template #item.action="{ item }">
       <v-btn-group class="table-action" density="compact" variant="plain">
         <v-btn
+          :title="t('Logger.action.details')"
           :disabled="typeof item.data === 'undefined'"
           color="info"
           size="small"

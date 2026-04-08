@@ -21,7 +21,7 @@ import { useConfigStore } from "@/options/stores/config.ts";
 import type { IPtppDumpUserInfo, IPtppUserInfo, TUserInfoStorageSchema } from "@/shared/types.ts";
 
 import SiteName from "@/options/components/SiteName.vue";
-import SiteFavicon from "@/options/components/SiteFavicon.vue";
+import SiteFavicon from "@/options/components/SiteFavicon/Index.vue";
 import CheckSwitchButton from "@/options/components/CheckSwitchButton.vue";
 
 const showDialog = defineModel<boolean>();
@@ -52,7 +52,7 @@ const userInfoTransferMap = {
   totalTraffic: { key: "totalTraffic", format: parsePtppSize },
   // seedingList?: string[]; // 做种列表
   seedingPoints: "seedingBonus",
-  averageSeedtime: "averageSeedtime",
+  averageSeedtime: "averageSeedingTime",
   // totalSeedtime?: number; // 总保种时间
   bonusPage: false,
   unsatisfiedsPage: false,
@@ -106,11 +106,11 @@ const statusIconPropComputed = (host: string) =>
     if (!allSupportedSiteHost.value.includes(host)) {
       progressIcon = "progress-close";
       progressColor = "purple";
-      progressTitle = "该站点暂不支持";
+      progressTitle = t("ptppSettings.RestorePtppUserDataDialog.notSupported");
     } else if (toImportSite.value.includes(host)) {
       progressIcon = "progress-pencil"; // 已选择
       progressColor = "";
-      progressTitle = "已选择";
+      progressTitle = t("ptppSettings.RestorePtppUserDataDialog.selected");
     }
 
     return {
@@ -144,8 +144,8 @@ function transferUserInfo(userInfo: IPtppUserInfo) {
 
 async function doImport() {
   if (isEmpty(metadataStore.sites)) {
-    if (!confirm("你似乎还没有添加任何站点，这可能导致导入异常，是否继续？")) {
-      runtimeStore.showSnakebar("导入操作已取消。", { color: "warning" });
+    if (!confirm(t("ptppSettings.RestorePtppUserDataDialog.noSiteWarning"))) {
+      runtimeStore.showSnakebar(t("ptppSettings.RestorePtppUserDataDialog.importCancelled"), { color: "warning" });
       return;
     }
   }
@@ -192,12 +192,12 @@ async function doImport() {
     await sendMessage("setExtStorage", { key: "userInfo", value: userInfoStorage });
     await metadataStore.$save();
 
-    runtimeStore.showSnakebar("导入成功，窗口将在 5s 后自动关闭，请刷新页面。");
+    runtimeStore.showSnakebar(t("ptppSettings.RestorePtppUserDataDialog.importSuccess"));
 
     setTimeout(() => (showDialog.value = false), 5e3);
   } catch (e) {
     console.error("导入失败", e);
-    runtimeStore.showSnakebar("导入失败。", { color: "error" });
+    runtimeStore.showSnakebar(t("ptppSettings.RestorePtppUserDataDialog.importFailure"), { color: "error" });
   } finally {
     // 恢复自动刷新的状态
     configStore.userInfo.autoReflush.enabled = autoReflushStatus;
@@ -224,17 +224,11 @@ async function entryDialog() {
       }
     }
 
-    // 站点定义中的 host
-    const host = await metadataStore.getSiteMergedMetadata(siteId, "host", "");
-    if (host) {
-      siteHostMap[host] = siteId;
-    }
-
-    // 站点定义中的 formerHosts
-    const formerHosts = (await metadataStore.getSiteMergedMetadata(siteId, "formerHosts", []))!;
-    if (formerHosts.length > 0) {
-      for (const host of formerHosts) {
-        siteHostMap[host] = siteId;
+    // 站点定义中的 legacyUrls
+    const legacyUrls = (await metadataStore.getSiteMergedMetadata(siteId, "legacyUrls", []))!;
+    if (legacyUrls.length > 0) {
+      for (const url of legacyUrls) {
+        siteHostMap[getHostFromUrl(url)] = siteId;
       }
     }
   }
@@ -250,15 +244,15 @@ async function entryDialog() {
     <v-card>
       <v-card-title class="pa-0">
         <v-toolbar color="blue-grey-darken-2">
-          <v-toolbar-title>恢复 PT-Plugin-Plus 的用户历史数据信息</v-toolbar-title>
+          <v-toolbar-title>{{ t("ptppSettings.RestorePtppUserDataDialog.title") }}</v-toolbar-title>
           <template #append>
-            <v-btn icon="mdi-close" @click="showDialog = false" />
+            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
           </template>
         </v-toolbar>
       </v-card-title>
       <v-divider />
       <v-card-text>
-        <v-alert class="mb-1 py-2" title="待导入数据">
+        <v-alert class="mb-1 py-2" :title="t('ptppSettings.RestorePtppUserDataDialog.pendingImportData')">
           <template #append>
             <CheckSwitchButton
               v-model="toImportSite"
@@ -301,7 +295,7 @@ async function entryDialog() {
 
                   <template #append>
                     <v-chip label v-bind="statusIconPropComputed(host as string).value">
-                      {{ Object.keys(data).length - 1 }}条
+                      {{ t("ptppSettings.RestorePtppUserDataDialog.recordCount", [Object.keys(data).length - 1]) }}
                     </v-chip>
                   </template>
                 </v-list-item>
@@ -315,7 +309,7 @@ async function entryDialog() {
         <v-switch
           color="success"
           v-model="overwriteExistUserInfo"
-          :label="`是否覆盖已有数据`"
+          :label="t('ptppSettings.RestorePtppUserDataDialog.overwriteExisting')"
           :disabled="isImporting"
           hide-details
           density="compact"
@@ -332,7 +326,7 @@ async function entryDialog() {
           {{ t("common.dialog.cancel") }}
         </v-btn>
         <v-btn color="green" prepend-icon="mdi-import" variant="text" :disabled="isImporting" @click="doImport">
-          导入
+          {{ t("common.import") }}
         </v-btn>
       </v-card-actions>
     </v-card>

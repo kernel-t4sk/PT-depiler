@@ -3,6 +3,7 @@
  */
 import type { ISiteMetadata } from "../types.ts";
 import { set } from "es-toolkit/compat";
+import { buildCategoryOptionsFromDict } from "../utils.ts";
 
 const categoryMap: Record<number, string> = {
   15: "Movie / Blu-ray",
@@ -35,11 +36,25 @@ const statsFilter = (query?: string) => {
   return Number(query);
 };
 
+const timeFilterWithDay = (query: string) => {
+  // Today at 09:17:08
+  // Yesterday at 17:11:03
+  const currentDate = new Date();
+  const dateParts = query.trim().split("at");
+  if (dateParts.length < 2) return null;
+  if (dateParts[0].trim() === "Yesterday") {
+    currentDate.setDate(currentDate.getDate() - 1);
+  }
+  currentDate.setHours(...(dateParts[1].trim().split(":").map(Number) as [number, number, number]));
+  return currentDate.getTime();
+};
+const timeFilterWithoutDay = { name: "parseTime", args: ["MMMM dd, yyyy,\u00A0HH:mm:ss"] };
+
 export const siteMetadata: ISiteMetadata = {
   version: 1,
   id: "hdspace",
   name: "HD-Space",
-  aka: ["HDS"],
+  aka: ["HD-S"],
   description: "HD-Space (HDS) is a Private Torrent Tracker for HD MOVIES / TV",
   tags: ["影视"],
   timezoneOffset: "+0000",
@@ -53,7 +68,7 @@ export const siteMetadata: ISiteMetadata = {
     {
       name: "类别",
       key: "category",
-      options: Object.entries(categoryMap).map(([value, name]) => ({ name, value })),
+      options: buildCategoryOptionsFromDict(categoryMap),
       cross: { mode: "custom" },
       generateRequestConfig: (selectedOptions) => {
         const params = { category: "" };
@@ -106,24 +121,8 @@ export const siteMetadata: ISiteMetadata = {
       time: {
         selector: ["td:nth-child(5):contains('day')", "td:nth-child(5):not(:contains('day'))"],
         switchFilters: {
-          "td:nth-child(5):contains('day')": [
-            // Today at 09:17:08
-            // Yesterday at 17:11:03
-            (query: string) => {
-              const currentDate = new Date();
-              const dateParts = query.trim().split("at");
-              if (dateParts.length < 2) return null;
-              if (dateParts[0].trim() === "Yesterday") {
-                currentDate.setDate(currentDate.getDate() - 1);
-              }
-              currentDate.setHours(...(dateParts[1].trim().split(":").map(Number) as [number, number, number]));
-              return currentDate.getTime();
-            },
-          ],
-          "td:nth-child(5):not(:contains('day'))": [
-            { name: "trim" },
-            { name: "parseTime", args: ["MMMM dd, yyyy,\u00A0HH:mm:ss"] },
-          ],
+          "td:nth-child(5):contains('day')": [timeFilterWithDay],
+          "td:nth-child(5):not(:contains('day'))": [timeFilterWithoutDay],
         },
       },
       size: { selector: "td:nth-child(6)", filters: [{ name: "parseSize" }] },
@@ -224,8 +223,24 @@ export const siteMetadata: ISiteMetadata = {
         assertion: { id: "params.uid" },
         selectors: {
           joinTime: {
-            selector: "td.header:contains('Joined on') + td",
-            filters: [{ name: "trim" }, { name: "parseTime", args: ["MMMM dd, yyyy,\u00A0HH:mm:ss"] }],
+            selector: [
+              "td.header:contains('Joined on') + td:not(:contains('day'))",
+              "td.header:contains('Joined on') + td:contains('day')",
+            ],
+            switchFilters: {
+              "td.header:contains('Joined on') + td:not(:contains('day'))": [timeFilterWithoutDay],
+              "td.header:contains('Joined on') + td:contains('day')": [timeFilterWithDay],
+            },
+          },
+          lastAccessAt: {
+            selector: [
+              "td.header:contains('Last access') + td:contains('day')",
+              "td.header:contains('Last access') + td:not(:contains('day'))",
+            ],
+            switchFilters: {
+              "td.header:contains('Last access') + td:contains('day')": [timeFilterWithDay],
+              "td.header:contains('Last access') + td:not(:contains('day'))": [timeFilterWithoutDay],
+            },
           },
           // FIXME 暂未实现 uploads, seedingSize
         },
@@ -278,18 +293,21 @@ export const siteMetadata: ISiteMetadata = {
     {
       id: 6,
       name: "VIP",
+      groupType: "vip",
       nameAka: ["V.I.P."],
       privilege: "Same access like HD Astronaut, immune to automatic demotion, automated HnR warnings and ratio watch.",
     },
     {
       id: 7,
       name: "Uploader",
+      groupType: "manager",
       uploads: 20,
       privilege: "Access to HD Spacer and HD Astronaut extras. May upload and download any torrents.",
     },
     {
       id: 8,
       name: "Elite Uploader",
+      groupType: "manager",
       uploaded: "20TB",
       ratio: 7,
       uploads: 100,

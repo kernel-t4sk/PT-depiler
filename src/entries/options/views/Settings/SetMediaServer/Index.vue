@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
-import type { DataTableHeader } from "vuetify/lib/components/VDataTable/types";
+import type { DataTableHeader } from "vuetify";
 import { getMediaServerIcon } from "@ptd/mediaServer";
 
 import { useMetadataStore } from "@/options/stores/metadata.ts";
@@ -22,7 +22,7 @@ const showEditDialog = ref<boolean>(false);
 const showDeleteDialog = ref<boolean>(false);
 
 const fullTableHeader = [
-  { title: t("SetDownloader.common.type"), key: "type", align: "center" },
+  { title: t("common.type"), key: "type", align: "center" },
   { title: t("SetDownloader.common.name"), key: "name", align: "start" },
   { title: t("SetDownloader.common.address"), key: "address", align: "start" },
   { title: t("SetDownloader.index.table.enabled"), key: "enabled", align: "center" },

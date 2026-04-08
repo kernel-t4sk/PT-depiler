@@ -1,4 +1,5 @@
-import { ISearchCategoryOptions, type ISiteMetadata } from "../types";
+import { ISearchCategoryOptions, type ISiteMetadata, type ITorrent } from "../types";
+import Luminance, { SchemaMetadata } from "../schemas/Luminance";
 
 const categories: ISearchCategoryOptions[] = [
   // Torznab Movie Categories
@@ -24,12 +25,13 @@ const categories: ISearchCategoryOptions[] = [
 ];
 
 export const siteMetadata: ISiteMetadata = {
+  ...SchemaMetadata,
   id: "morethantv",
-  version: 1,
+  version: 2,
   name: "MoreThanTV",
   aka: ["MTV"],
   description: "MoreThanTV is a Private Torrent Tracker for TV / MOVIES",
-  tags: ["电视剧", "剧集"],
+  tags: ["电视剧", "剧集", "电影"],
 
   collaborator: ["luckiestone", "Rhilip"],
 
@@ -37,7 +39,7 @@ export const siteMetadata: ISiteMetadata = {
   schema: "Luminance",
 
   urls: ["https://www.morethantv.me/"],
-  formerHosts: ["www.morethan.tv"],
+  legacyUrls: ["https://www.morethan.tv/"],
 
   category: [
     {
@@ -47,6 +49,8 @@ export const siteMetadata: ISiteMetadata = {
       cross: { mode: "comma" },
     },
   ],
+
+  officialGroupPattern: [/-(TEPES|E\.N\.D|SMURF|hallowed|WDYM|PiRAMiDHEAD|VaLTiEL)/i],
 
   search: {
     skipNonLatinCharacters: true,
@@ -63,6 +67,13 @@ export const siteMetadata: ISiteMetadata = {
       imdb: {
         requestConfigTransformer: ({ keywords, requestConfig }) => {
           requestConfig!.params.imdbid = keywords;
+          delete requestConfig!.params.q;
+          return requestConfig!;
+        },
+      },
+      tvmaze: {
+        requestConfigTransformer: ({ keywords, requestConfig }) => {
+          requestConfig!.params.tvmazeid = keywords;
           delete requestConfig!.params.q;
           return requestConfig!;
         },
@@ -87,6 +98,7 @@ export const siteMetadata: ISiteMetadata = {
       }, // <torznab:attr name="category" value="5040" />
       tags: [{ selector: '[name="downloadvolumefactor"][value="0"]', name: "Free", color: "blue" }],
       ext_imdb: { selector: "[name='imdbid']", attr: "value", filters: [{ name: "extImdbId" }] }, // <torznab:attr name="imdbid" value="1234567" />
+      ext_tvmaze: { selector: "[name='tvmazeid']", attr: "value" },
       // 使用 api 不返回 process 和 status
       // 如果走 torrents/browse?searchtext= 则没有 category
     },
@@ -117,82 +129,20 @@ export const siteMetadata: ISiteMetadata = {
       urlPattern: ["/torrents/browse"],
       mergeSearchSelectors: false,
       selectors: {
-        rows: { selector: "table#torrent_table tr.torrent" },
+        ...SchemaMetadata.search!.selectors!,
         id: {
           selector: "a.overlay_torrent[href]",
           attr: "href",
           filters: [{ name: "querystring", args: ["torrentid"] }],
         },
-        title: { selector: "a.overlay_torrent[href]" },
-        url: { selector: "a.overlay_torrent[href]", attr: "href" },
-        link: { selector: "a[href^='/torrents.php'][href*='action=download']", attr: "href" },
         seeders: { selector: "td:nth-child(7)" },
         leechers: { selector: "td:nth-child(8)" },
         completed: { selector: "td:nth-child(6)" },
         size: { selector: "td:nth-child(5)", filters: [{ name: "parseSize" }] },
-        time: {
-          selector: "span.time[title]",
-          attr: "title", // Jul 03 2025, 21:04
-          filters: [{ name: "parseTime", args: ["MMM dd yyyy, HH:mm"] }],
-        },
         keywords: { selector: "input#searchtext", elementProcess: (el) => el?.value ?? "" },
       },
     },
   ],
-
-  userInfo: {
-    pickLast: ["id", "joinTime"],
-    process: [
-      {
-        requestConfig: { url: "/index.php" },
-        selectors: {
-          id: {
-            selector: "a.username[href*='user.php']:first",
-            attr: "href",
-            filters: [{ name: "querystring", args: ["id"] }],
-          },
-          name: { selector: "a.username[href*='user.php']:first" },
-          messageCount: {
-            selector: ["div.alert-bar > a[href*='inbox.php']", "div.alertbar > a[href*='inbox.php']"],
-            filters: [{ name: "parseNumber" }],
-          },
-        },
-      },
-      {
-        requestConfig: { url: "/user.php" },
-        assertion: { id: "params.id" },
-        selectors: {
-          uploaded: { selector: "ul.stats > li:contains('Uploaded')", filters: [{ name: "parseSize" }] },
-          downloaded: { selector: "ul.stats > li:contains('Downloaded')", filters: [{ name: "parseSize" }] },
-          ratio: { selector: "ul.stats > li:contains('Ratio:')", filters: [{ name: "parseNumber" }] },
-          seeding: { selector: "ul.stats > li:contains('Seeding:')", filters: [{ name: "parseNumber" }] },
-          seedingSize: { selector: "ul.stats > li:contains('Seeding Size:')", filters: [{ name: "parseSize" }] },
-          levelName: { selector: "ul.stats > li:contains('Class:') a" },
-          bonus: { selector: "#stats_credits", filters: [{ name: "parseNumber" }] },
-          bonusPerHour: {
-            selector: "ul.stats > li:contains('Seeding:')",
-            filters: [
-              (query: string) => {
-                let ret = 0;
-                const queryMatch = query.replace(/,/g, "").match(/Seeding:.+?(\d+)/);
-                if (queryMatch && queryMatch.length >= 2) {
-                  const rawPerHour = parseFloat(queryMatch[1]);
-                  ret = rawPerHour >= 300 ? 100 : Math.round((Math.sqrt(rawPerHour * 0.4 + 1) - 1) * 10);
-                }
-                return ret;
-              },
-            ],
-          },
-          joinTime: {
-            selector: "ul.stats > li:contains('Joined:') > span",
-            attr: "title",
-            filters: [{ name: "parseTime", args: ["MMMM dd yyyy, HH:mm"] }],
-          },
-          posts: { selector: "ul.stats > li:contains('Forum Posts:')", filters: [{ name: "parseNumber" }] },
-        },
-      },
-    ],
-  },
 
   levelRequirements: [
     {
@@ -249,6 +199,7 @@ export const siteMetadata: ISiteMetadata = {
       uploaded: "3000GB",
       uploads: 500,
       posts: 25,
+      isKept: true,
       privilege:
         "Engineer Restricted forum; FREE Invites (Send a staff PM for us to credit your account); Immune from inactivity disablement",
     },
@@ -271,3 +222,10 @@ export const siteMetadata: ISiteMetadata = {
     { id: 211, name: "Tagger", groupType: "manager" },
   ],
 };
+
+export default class MoreThanTV extends Luminance {
+  public override async getTorrentDownloadLink(torrent: ITorrent): Promise<string> {
+    // 种子链接格式是 torrent.php?torrentid=123（有种子组）
+    return this.getTorrentDownloadLinkFactory("torrentid")(torrent);
+  }
+}

@@ -11,7 +11,7 @@ export const siteMetadata: ISiteMetadata = {
   schema: "NexusPHP",
 
   urls: ["https://hdfun.me/"],
-  formerHosts: ["hdzone.me"],
+  legacyUrls: ["https://hdzone.me/"],
 
   favicon: "./_default_nexusphp.png",
 
@@ -86,6 +86,7 @@ export const siteMetadata: ISiteMetadata = {
       interval: "P10W",
       downloaded: "8TB",
       ratio: 5.5,
+      isKept: true,
       privilege: "得到3个邀请名额。账号永久保留。",
     },
   ],

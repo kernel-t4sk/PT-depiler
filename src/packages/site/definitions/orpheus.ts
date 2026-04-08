@@ -1,5 +1,5 @@
-import { type ISiteMetadata } from "../types";
-import { SchemaMetadata } from "../schemas/GazelleJSONAPI.ts";
+import type { ISiteMetadata, IUserInfo } from "../types";
+import GazelleJSONAPI, { SchemaMetadata } from "../schemas/GazelleJSONAPI.ts";
 
 export const siteMetadata: ISiteMetadata = {
   ...SchemaMetadata,
@@ -17,6 +17,65 @@ export const siteMetadata: ISiteMetadata = {
   schema: "GazelleJSONAPI",
 
   urls: ["https://orpheus.network/"],
+
+  category: [
+    {
+      name: "类别",
+      key: "filter_cat",
+      options: [
+        { name: "Music", value: 1 },
+        { name: "Applications", value: 2 },
+        { name: "E-Books", value: 3 },
+        { name: "Audiobooks", value: 4 },
+        { name: "E-Learning Videos", value: 5 },
+        { name: "Comedy", value: 6 },
+        { name: "Comics", value: 7 },
+      ],
+      cross: { mode: "appendQuote" },
+    },
+    {
+      name: "发行类别",
+      key: "releasetype",
+      options: [
+        { name: "Album", value: 1 },
+        { name: "Soundtrack", value: 3 },
+        { name: "EP", value: 5 },
+        { name: "Anthology", value: 6 },
+        { name: "Compilation", value: 7 },
+        { name: "Sampler", value: 8 },
+        { name: "Single", value: 9 },
+        { name: "Demo", value: 10 },
+        { name: "Live album", value: 11 },
+        { name: "Split", value: 12 },
+        { name: "Remix", value: 13 },
+        { name: "Bootleg", value: 14 },
+        { name: "Interview", value: 15 },
+        { name: "Mixtape", value: 16 },
+        { name: "DJ Mix", value: 17 },
+        { name: "Concert recording", value: 18 },
+        { name: "Unknown", value: 21 },
+      ],
+    },
+  ],
+
+  search: {
+    ...SchemaMetadata.search!,
+    advanceKeywordParams: {
+      imdb: false,
+    },
+  },
+
+  userInfo: {
+    ...SchemaMetadata.userInfo!,
+    selectors: {
+      ...SchemaMetadata.userInfo!.selectors!,
+      // /bonus.php?action=bprates
+      seedingSize: {
+        selector: ["table > tbody > tr > td:eq(1)"],
+        filters: [{ name: "parseSize" }],
+      },
+    },
+  },
 
   levelRequirements: [
     {
@@ -40,6 +99,7 @@ export const siteMetadata: ISiteMetadata = {
       uploads: 5,
       uploaded: "25GB",
       ratio: 1.05,
+      isKept: true,
       privilege:
         "Immune to inactivity pruning;Torrent Notification system;Collage Creation (other than Personal) privileges;Access the Power User forums and IRC channels.",
     },
@@ -50,6 +110,7 @@ export const siteMetadata: ISiteMetadata = {
       uploads: 50,
       uploaded: "100GB",
       ratio: 1.05,
+      isKept: true,
       privilege:
         "ame as lower classes, plus can access the Invitations and Elite forums and IRC channels. Can edit torrents. Able to rename their personal collages.",
     },
@@ -60,36 +121,57 @@ export const siteMetadata: ISiteMetadata = {
       uploads: 500,
       uploaded: "500GB",
       ratio: 1.05,
+      isKept: true,
       privilege:
         "Same as lower classes, plus can access TM forums and IRC channels. Can request their own custom title.",
     },
     {
       id: 6,
       name: "Power Torrent Master",
+      nameAka: ["Power TM"],
       interval: "P8W",
       uniqueGroups: 500,
       uploaded: "500GB",
       ratio: 1.05,
+      isKept: true,
       privilege: "Same as lower classes",
     },
     {
       id: 7,
       name: "Elite Torrent Master",
+      nameAka: ["Elite TM"],
       interval: "P8W",
       perfectFlacs: 500,
       uploaded: "500GB",
       ratio: 1.05,
+      isKept: true,
       privilege:
         "Same as lower classes, plus can access ETM forums and IRC channels. Gets unlimited invites. Can edit Missing Lineage flag on torrents",
     },
     {
       id: 8,
       name: "Ultimate Torrent Master",
+      nameAka: ["Ultimate TM"],
       interval: "P8W",
       perfectFlacs: 2000,
       uploaded: "2048GB",
       ratio: 1.05,
+      isKept: true,
       privilege: "Can view search past page 20",
     },
   ],
 };
+
+export default class Orpheus extends GazelleJSONAPI {
+  protected override async getSeedingSize(userId: number, sizeIndex: number = 0): Promise<Partial<IUserInfo>> {
+    await this.sleepAction(this.metadata.userInfo?.requestDelay);
+
+    const { data: bonusPage } = await this.request<Document>({
+      url: "/bonus.php?action=bprates",
+      responseType: "document",
+    });
+    return this.getFieldsData(bonusPage, this.metadata.userInfo!.selectors!, [
+      "seedingSize",
+    ] as (keyof Partial<IUserInfo>)[]) as Partial<IUserInfo>;
+  }
+}

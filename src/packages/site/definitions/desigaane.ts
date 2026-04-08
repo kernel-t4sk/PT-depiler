@@ -17,7 +17,13 @@ export const siteMetadata: ISiteMetadata = {
   schema: "GazelleJSONAPI",
 
   urls: ["https://desigaane.rocks/"],
-  formerHosts: [],
+
+  search: {
+    ...SchemaMetadata.search!,
+    advanceKeywordParams: {
+      imdb: false,
+    },
+  },
 
   levelRequirements: [
     {

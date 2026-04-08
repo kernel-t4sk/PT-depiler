@@ -1,18 +1,22 @@
 <script setup lang="ts">
 import { inject, provide, useTemplateRef, ref, shallowReactive, computed, withModifiers } from "vue";
+import { useI18n } from "vue-i18n";
 import { useDraggable } from "@vueuse/core";
 import { type ITorrent } from "@ptd/site";
 
 import { sendMessage } from "@/messages.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
+
+import type { IRemoteDownloadDialogData } from "./types.ts";
 import { currentView, type IPtdData, pageType, updatePageType } from "./utils.ts";
 
-import SpeedDialBtn from "@/content-script/app/components/SpeedDialBtn.vue";
-import SentToDownloaderDialog from "@/options/components/SentToDownloaderDialog.vue";
+import SpeedDialBtn from "./components/SpeedDialBtn.vue";
+import SentToDownloaderDialog from "@/options/components/SentToDownloaderDialog/Index.vue";
 
 const configStore = useConfigStore();
 const runtimeStore = useRuntimeStore();
+const { t } = useI18n();
 
 const ptdIcon = chrome.runtime.getURL("icons/logo/64.png");
 const ptdData = inject<IPtdData>("ptd_data", {});
@@ -70,9 +74,10 @@ configStore.$onReady(() => {
   bottomY.value = clientHeight - y.value;
 });
 
-const remoteDownloadDialogData = shallowReactive({
+const remoteDownloadDialogData = shallowReactive<IRemoteDownloadDialogData>({
   show: false,
   torrents: [] as ITorrent[],
+  isDefaultSend: false,
 });
 provide("remoteDownloadDialogData", remoteDownloadDialogData);
 
@@ -223,8 +228,21 @@ function openOptions() {
 
 <template>
   <v-theme-provider :theme="configStore.contentScript.applyTheme ? configStore.uiTheme : ''">
-    <div ref="el" :style="style" style="position: fixed; z-index: 9999999">
-      <v-speed-dial v-model="openSpeedDial" :close-on-content-click="false" no-click-animation persistent>
+    <div
+      ref="el"
+      :style="style"
+      style="position: fixed; z-index: 9999999"
+      :class="{
+        'ptd-fade-enter': configStore.contentScript.fadeEnterStyle,
+      }"
+    >
+      <v-speed-dial
+        v-model="openSpeedDial"
+        :close-on-content-click="false"
+        disable-initial-focus
+        no-click-animation
+        persistent
+      >
         <template v-slot:activator="{ props: activatorProps }">
           <v-fab
             v-bind="activatorProps"
@@ -236,14 +254,14 @@ function openOptions() {
             @dragleave.prevent="isDragging = false"
             v-on="dropAction"
           >
-            <v-avatar :image="ptdIcon" rounded="0" :class="{ 'ptd-fab-loading': isDragging }" />
+            <v-avatar :class="{ 'ptd-fab-loading': isDragging }" :image="ptdIcon" color="transparent" rounded="0" />
           </v-fab>
         </template>
 
         <!-- 这里根据 pageType 来决定显示哪些按钮 -->
         <component :is="currentView" :key="pageType" />
 
-        <SpeedDialBtn key="home" color="amber" icon="mdi-home" title="打开PTD" @click="openOptions" />
+        <SpeedDialBtn key="home" color="amber" icon="mdi-home" :title="t('contentScript.openPTD')" @click="openOptions" />
       </v-speed-dial>
     </div>
 
@@ -253,6 +271,7 @@ function openOptions() {
       v-model="remoteDownloadDialogData.show"
       :content-class="['bg-white']"
       :torrent-items="remoteDownloadDialogData.torrents"
+      :is-default-send="remoteDownloadDialogData.isDefaultSend"
     />
   </v-theme-provider>
 </template>

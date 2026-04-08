@@ -22,7 +22,8 @@ export const siteMetadata: ISiteMetadata = {
   schema: "NexusPHP",
 
   urls: ["uggcf://cg.ogfpubby.pyho/"],
-  formerHosts: [rot13("cg.ogfpubby.arg")],
+  legacyUrls: ["uggcf://cg.ogfpubby.arg/"],
+
   favicon: "./btschool.ico",
 
   category: [
@@ -176,6 +177,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "2TB",
       ratio: 4.5,
       seedingBonus: 600000,
+      isKept: true,
       privilege: "更新过期的外部信息；查看Extreme User论坛；永远保留账号",
     },
     {
@@ -185,6 +187,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "5TB",
       ratio: 5.0,
       seedingBonus: 800000,
+      isKept: true,
       privilege: "五个邀请名额",
     },
     {
@@ -194,6 +197,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "10TB",
       ratio: 5.5,
       seedingBonus: 1000000,
+      isKept: true,
       privilege: "十个邀请名额；发送邀请",
     },
     {

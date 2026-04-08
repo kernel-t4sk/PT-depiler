@@ -1,9 +1,9 @@
 import { type ISiteMetadata } from "../types";
-import { SchemaMetadata } from "../schemas/Unit3D.ts";
+import { CategoryFree, SchemaMetadata } from "../schemas/Unit3D.ts";
 
 export const siteMetadata: ISiteMetadata = {
   ...SchemaMetadata,
-  version: 1,
+  version: 2,
   id: "lst",
   name: "LST",
   description: "Something cool",
@@ -73,8 +73,7 @@ export const siteMetadata: ISiteMetadata = {
       cross: { mode: "brackets" },
     },
     {
-      name: "Buff",
-      key: "free",
+      ...CategoryFree,
       options: [
         // 25% - 75% 没有实际使用
         { name: "Normal", value: 0 },
@@ -83,18 +82,6 @@ export const siteMetadata: ISiteMetadata = {
         { name: "精选", value: "featured" },
         { name: "Refundable", value: "refundable" },
       ],
-      cross: { mode: "custom" },
-      generateRequestConfig: (selectedOptions) => {
-        const params: Record<string, any> = { free: [] };
-        (selectedOptions as Array<number | string>).forEach((value) => {
-          if (value === "doubleup" || value === "featured" || value === "refundable") {
-            params[value] = 1;
-          } else {
-            params.free.push(value);
-          }
-        });
-        return { requestConfig: { params } };
-      },
     },
   ],
 
@@ -103,49 +90,62 @@ export const siteMetadata: ISiteMetadata = {
     skipNonLatinCharacters: true,
     selectors: {
       ...SchemaMetadata.search!.selectors,
-      category: {
-        selector: "span.torrent-search--list__uploader > div:nth-child(1)",
-        filters: [{ name: "trim" }],
+      rows: { selector: ".torrent-results__list > .torrent-search-row" },
+      id: {
+        selector: ".torrent-search-row__name > a",
+        attr: "href",
+        filters: [(query: string) => query.match(/\/torrents\/(\d+)/)?.[1] || query, { name: "parseNumber" }],
       },
+      title: { selector: ".torrent-search-row__name > a" },
+      url: { selector: ".torrent-search-row__name > a", attr: "href" },
+      size: { selector: ".torrent-search-row__stat--size", attr: "title", filters: [{ name: "parseNumber" }] },
+      author: { ...SchemaMetadata.search!.selectors!.author!, selector: ".torrent-search-row__uploader" },
+      category: { selector: ".torrent-search-row__category", attr: "title" },
+      seeders: { selector: ".torrent-search-row__stat--seeders" },
+      leechers: { selector: ".torrent-search-row__stat--leechers" },
+      completed: { selector: ".torrent-search-row__stat--completed" },
+      comments: { selector: ".torrent-badges__item--comments .torrent-badges__count" },
+
       tags: [
         {
           name: "Free",
-          selector: "div[title*='100%'], i.torrent-icons__featured",
+          selector: "span[title*='100%'], span.torrent-badges__item--freeleech span.torrent-badges__item--featured",
           color: "blue",
         },
         {
           name: "2xUp",
-          selector: "i.fa-chevron-double-up, i.torrent-icons__double-upload, i.torrent-icons__featured",
+          selector:
+            "i.fa-chevron-double-up, span.torrent-badges__item--double-upload, span.torrent-badges__item--featured",
           color: "lime",
         },
         {
           name: "置顶",
-          selector: "i.fa-thumbtack",
+          selector: "span.torrent-badges__item--sticky",
           color: "red",
         },
         {
           name: "可退款",
-          selector: "i.fa-percentage, i[title*='Refundable']",
+          selector: "span.torrent-badges__item--refundable",
           color: "gray",
         },
         {
           name: "Internal",
-          selector: "i.torrent-icons__internal",
+          selector: "span.torrent-badges__item--internal",
           color: "purple",
         },
         {
           name: "个人发布",
-          selector: "i.torrent-icons__personal-release",
+          selector: "span.torrent-badges__item--personal",
           color: "purple",
         },
         {
           name: "Highspeed",
-          selector: "i.torrent-icons__highspeed",
+          selector: "span.torrent-badges__item--highspeed",
           color: "red",
         },
         {
           name: "Trump",
-          selector: "i.fa-skull.torrent-icons__bumped",
+          selector: "span.torrent-badges__item--trump",
           color: "red",
         },
         {
@@ -157,6 +157,33 @@ export const siteMetadata: ISiteMetadata = {
     },
   },
 
+  userInfo: {
+    ...SchemaMetadata.userInfo!,
+    selectors: {
+      ...SchemaMetadata.userInfo!.selectors!,
+      uploads: {
+        selector: "div.profile-mini-stat__label:contains('Total uploads') + div",
+        filters: [{ name: "parseNumber" }],
+      },
+      joinTime: {
+        ...SchemaMetadata.userInfo!.selectors!.joinTime!,
+        selector: "span.profile-hero__meta-item:contains('Registration date')",
+      },
+      lastAccessAt: {
+        selector: "span.profile-hero__meta-item:contains('Last login')",
+        filters: [{ name: "split", args: [":", 1] }, { name: "trim" }, { name: "parseTTL" }],
+      },
+      seedingSize: {
+        selector: "div.profile-mini-stat__label:contains('Seeding size') + div",
+        filters: [{ name: "parseSize" }],
+      },
+      averageSeedingTime: {
+        selector: "div.profile-mini-stat__label:contains('Average seedtime') + div",
+        filters: [{ name: "parseDuration" }],
+      },
+    },
+  },
+
   levelRequirements: [
     {
       id: 0,
@@ -164,72 +191,94 @@ export const siteMetadata: ISiteMetadata = {
     },
     {
       id: 1,
-      name: "Plankton",
+      name: "Crab",
       ratio: 0.4,
-      privilege: "5下载槽",
+      privilege: "5下载槽 上传种子",
     },
     {
       id: 2,
-      name: "Minnow",
-      interval: "P1W",
-      ratio: 0.4,
-      uploaded: "512GiB",
+      name: "Goldfish",
+      interval: "P1M",
+      ratio: 0.6,
+      alternative: [{ uploaded: "1TiB" }, { seedingSize: "100GiB" }],
       averageSeedingTime: "P1W",
-      privilege: "8下载槽",
+      privilege: "10下载槽 上传种子",
     },
     {
       id: 3,
-      name: "Goldfish",
-      interval: "P1M",
-      ratio: 0.4,
-      alternative: [{ uploaded: "1TiB" }, { seedingSize: "102.4GiB" }],
-      averageSeedingTime: "P1W",
-      privilege: "8下载槽 发送邀请",
+      name: "Lobster",
+      interval: "P2M",
+      ratio: 0.7,
+      alternative: [{ uploaded: "5TiB" }, { seedingSize: "500GiB" }],
+      averageSeedingTime: "P2W",
+      privilege: "15下载槽 上传种子 发送邀请",
     },
     {
       id: 4,
-      name: "Swordfish",
-      interval: "P2M",
-      ratio: 0.4,
-      alternative: [{ uploaded: "5TiB" }, { seedingSize: "512GiB" }],
-      averageSeedingTime: "P2W",
-      privilege: "15下载槽 发送邀请 自动通过候选",
+      name: "Sailboat",
+      interval: "P6M",
+      ratio: 1,
+      seedingSize: "10TiB",
+      averageSeedingTime: "P2M",
+      privilege: "25下载槽 上传种子 发送邀请 站免",
     },
     {
       id: 5,
-      name: "Dolphin",
-      interval: "P3M",
-      ratio: 0.4,
-      alternative: [{ uploaded: "10TiB" }, { seedingSize: "2TiB" }],
-      averageSeedingTime: "P2W6D",
-      privilege: "无限下载槽 发送邀请 站免 自动通过候选",
+      name: "Ship",
+      interval: "P1Y",
+      ratio: 1.5,
+      seedingSize: "20TiB",
+      averageSeedingTime: "P3M",
+      privilege: "50下载槽 上传种子 发送邀请 站免 免疫HR",
     },
     {
       id: 6,
-      name: "Whale",
-      interval: "P4M",
-      ratio: 0.4,
-      alternative: [{ uploaded: "25TiB" }, { seedingSize: "6TiB" }],
-      averageSeedingTime: "P1M",
-      privilege: "无限下载槽 发送邀请 站免 免疫HR 自动通过候选",
+      name: "Cargo Ship",
+      interval: "P2Y",
+      ratio: 2,
+      seedingSize: "50TiB",
+      averageSeedingTime: "P6M",
+      privilege: "75下载槽 上传种子 发送邀请 站免 免疫HR",
     },
     {
       id: 7,
-      name: "Leviathan",
-      interval: "P8M",
-      ratio: 0.4,
-      alternative: [{ uploaded: "50TiB" }, { seedingSize: "12TiB" }],
-      averageSeedingTime: "P3M",
-      privilege: "无限下载槽 发送邀请 站免 免疫HR 自动通过候选",
+      name: "Dolphin",
+      interval: "P3M",
+      ratio: 1,
+      alternative: [{ uploaded: "10TiB" }, { seedingSize: "2TiB" }],
+      averageSeedingTime: "P2W6D",
+      uploads: 5,
+      privilege: "20下载槽 上传种子 发送邀请 站免 自动通过候选",
     },
     {
       id: 8,
-      name: "Cthulhu",
+      name: "Whale",
+      interval: "P4M",
+      ratio: 1,
+      alternative: [{ uploaded: "25TiB" }, { seedingSize: "6TiB" }],
+      averageSeedingTime: "P1M",
+      uploads: 10,
+      privilege: "25下载槽 上传种子 发送邀请 站免 免疫HR 自动通过候选",
+    },
+    {
+      id: 9,
+      name: "Leviathan",
       interval: "P1Y",
-      ratio: 0.4,
-      alternative: [{ uploaded: "200TiB" }, { seedingSize: "20TiB" }],
+      ratio: 1.5,
+      alternative: [{ uploaded: "50TiB" }, { seedingSize: "20TiB" }],
+      averageSeedingTime: "P3M",
+      uploads: 15,
+      privilege: "50下载槽 上传种子 发送邀请 站免 免疫HR 自动通过候选",
+    },
+    {
+      id: 10,
+      name: "Cthulhu",
+      interval: "P2Y",
+      ratio: 2,
+      alternative: [{ uploaded: "100TiB" }, { seedingSize: "50TiB" }],
       averageSeedingTime: "P6M",
-      privilege: "无限下载槽 发送邀请 站免 免疫HR 自动通过候选",
+      uploads: 20,
+      privilege: "75下载槽 上传种子 发送邀请 站免 免疫HR 自动通过候选",
     },
   ],
 };

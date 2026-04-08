@@ -1,6 +1,17 @@
 import { type ISiteMetadata } from "../types";
 import { SchemaMetadata } from "../schemas/Unit3D.ts";
-import { buildCategoryOptions } from "../utils";
+import { buildCategoryOptionsFromDict, buildCategoryOptionsFromList } from "../utils";
+
+const categoryMap: Record<number, string> = {
+  1: "Movie",
+  2: "TV",
+  3: "Music",
+  6: "Anime",
+  4: "Games",
+  5: "Apps",
+  9: "Sport",
+  11: "Assorted",
+};
 
 export const siteMetadata: ISiteMetadata = {
   ...SchemaMetadata,
@@ -8,6 +19,7 @@ export const siteMetadata: ISiteMetadata = {
   version: 1,
   name: "FearNoPeer",
   aka: ["FNP"],
+  description: "FearNoPear is a Private Torrent Tracker for MOVIES / TV / GENERAL",
   tags: ["综合"],
   timezoneOffset: "-0500",
   collaborator: ["hyuan280"],
@@ -21,16 +33,7 @@ export const siteMetadata: ISiteMetadata = {
     {
       name: "类别",
       key: "categoryIds",
-      options: [
-        { name: "Movie", value: 1 },
-        { name: "TV", value: 2 },
-        { name: "Music", value: 3 },
-        { name: "Anime", value: 6 },
-        { name: "Games", value: 4 },
-        { name: "Apps", value: 5 },
-        { name: "Sport", value: 9 },
-        { name: "Assorted", value: 11 },
-      ],
+      options: buildCategoryOptionsFromDict(categoryMap),
       cross: { mode: "brackets" },
     },
     {
@@ -172,7 +175,7 @@ export const siteMetadata: ISiteMetadata = {
     {
       name: "Primary Language",
       key: "primaryLanguageNames",
-      options: buildCategoryOptions([
+      options: buildCategoryOptionsFromList([
         ["ab", "af", "am", "ar", "as", "az", "bg", "bn", "bo", "bs", "ca", "cn", "cr", "cs", "cy", "da", "de", "dz"],
         ["el", "en", "eo", "es", "et", "eu", "fa", "ff", "fi", "fr", "ga", "gl", "gu", "he", "hi", "hr", "ht", "hu"],
         ["hy", "id", "ig", "is", "it", "iu", "ja", "ka", "kk", "kl", "km", "kn", "ko", "ku", "ky", "la", "lt", "lv"],
@@ -183,6 +186,41 @@ export const siteMetadata: ISiteMetadata = {
       cross: { mode: "brackets" },
     },
   ],
+
+  search: {
+    ...SchemaMetadata.search,
+    selectors: {
+      ...SchemaMetadata.search!.selectors,
+      category: {
+        selector: ":self",
+        data: "categoryId",
+        filters: [(query: string) => categoryMap[Number(query)]],
+      },
+    },
+  },
+
+  userInfo: {
+    ...SchemaMetadata.userInfo!,
+    selectors: {
+      ...SchemaMetadata.userInfo!.selectors!,
+      uploads: {
+        ...SchemaMetadata.userInfo!.selectors!.uploads!,
+        selector: "dl.profile-stats-list-2026:has(a[href*='/uploads'])",
+      },
+      joinTime: {
+        ...SchemaMetadata.userInfo!.selectors!.joinTime!,
+        selector: "span.profile-hero-2026__meta-item:contains('Registration date')",
+      },
+      lastAccessAt: {
+        selector: "span.profile-hero-2026__meta-item:contains('Last login') > strong",
+        filters: [{ name: "parseTTL" }],
+      },
+      invites: {
+        selector: "span.profile-hero-2026__info-label:contains('Invites') + span",
+        filters: [{ name: "parseNumber" }],
+      },
+    },
+  },
 
   levelRequirements: [
     {

@@ -19,7 +19,7 @@ export const siteMetadata: ISiteMetadata = {
   schema: "NexusPHP",
 
   urls: ["uggcf://cgpuqovgf.pb/"],
-  formerHosts: ["chdbits.co"],
+  legacyUrls: ["https://chdbits.co/"],
 
   category: [
     {
@@ -147,6 +147,8 @@ export const siteMetadata: ISiteMetadata = {
     },
   ],
 
+  officialGroupPattern: [/-(CHD|.*@CHDBits)|@CHDWEB/i],
+
   search: {
     ...SchemaMetadata.search,
     selectors: {
@@ -198,7 +200,20 @@ export const siteMetadata: ISiteMetadata = {
       },
     },
   },
-
+  userInfo: {
+    ...SchemaMetadata.userInfo!,
+    selectors: {
+      ...SchemaMetadata.userInfo!.selectors!,
+      hnrPreWarning: {
+        text: 0,
+        selector: ["#info_block a[href*='hnr.php']"],
+        elementProcess: (e: HTMLElement) => {
+          const text = e.nextSibling?.textContent?.trim();
+          return text ? parseInt(text) : 0;
+        },
+      },
+    },
+  },
   levelRequirements: [
     {
       id: 1,
@@ -259,7 +274,8 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "2TB",
       ratio: 7.0,
       bonus: 2200000,
-      privilege: "首次升级赠送邀请1枚，可以更新过期的外部信息；可以查看Extreme User论坛。",
+      privilege:
+        "首次升级赠送邀请1枚，可以更新过期的外部信息；可以查看Extreme User论坛。Extreme User及以上等级用户封存账号（在控制面板）后不会被删除账号。",
     },
     {
       id: 8,
@@ -268,7 +284,8 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "3TB",
       ratio: 8.0,
       bonus: 3500000,
-      privilege: "首次升级赠送邀请2枚，保留帐号，在官方活动期间可发放邀请；",
+      isKept: true,
+      privilege: "首次升级赠送邀请2枚，保留帐号，在官方活动期间可发放邀请；Ultimate User及以上等级用户会永远保留；",
     },
     {
       id: 9,
@@ -277,6 +294,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "4TB",
       ratio: 10,
       bonus: 5000000,
+      isKept: true,
       privilege: "首次升级赠送邀请3枚，保留帐号，在官方活动期间可发放邀请；",
     },
   ],

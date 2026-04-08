@@ -13,11 +13,12 @@ import NexusPHP, {
   CategorySpstate,
   SchemaMetadata,
 } from "../schemas/NexusPHP.ts";
+import { parseSizeString } from "../utils";
 
 export const siteMetadata: ISiteMetadata = {
   ...SchemaMetadata,
 
-  version: 2,
+  version: 3,
   id: "pter",
   name: "PTer",
   aka: ["PTerClub", "猫站"],
@@ -27,8 +28,8 @@ export const siteMetadata: ISiteMetadata = {
   type: "private",
   schema: "NexusPHP",
 
-  urls: ["https://pterclub.com/", "https://pterclub.net/"],
-  formerHosts: ["pter.club"],
+  urls: ["https://pterclub.net/"],
+  legacyUrls: ["https://pter.club/", "https://pterclub.com/"],
 
   category: [
     {
@@ -132,8 +133,19 @@ export const siteMetadata: ISiteMetadata = {
     },
   ],
 
+  officialGroupPattern: [/-(Pter|.*Pter)/i],
+
   search: {
     ...SchemaMetadata.search!,
+    advanceKeywordParams: {
+      ...SchemaMetadata.search?.advanceKeywordParams!,
+      douban: {
+        requestConfigTransformer: ({ requestConfig: config }) => {
+          set(config!, "params.search_area", 5); // params "&search_area=4"
+          return config!;
+        },
+      },
+    },
     selectors: {
       ...SchemaMetadata.search!.selectors!,
 
@@ -211,7 +223,7 @@ export const siteMetadata: ISiteMetadata = {
 
   list: [
     {
-      urlPattern: ["/torrents.php", "/music.php", "/officialgroup.php"],
+      urlPattern: ["/torrents.php", "/music.php", "/officialgroup.php", "/reseed.php"],
     },
     {
       urlPattern: ["/detailsgame.php"],
@@ -220,12 +232,10 @@ export const siteMetadata: ISiteMetadata = {
         // TODO,
         rows: {
           selector: ".rowfollow",
-          filter: <T>(rows: T): T => {
+          filter: (rows: HTMLElement[] | null): HTMLElement[] | null => {
             // 只保留游戏种子
             if (Array.isArray(rows)) {
-              return Array.from(rows).filter(
-                (row) => !!(row as HTMLElement).querySelector("a[title='点击查看此种子详细资料']"),
-              ) as unknown as T;
+              return Array.from(rows).filter((row) => !!row.querySelector("a[title='点击查看此种子详细资料']"));
             }
             return rows;
           },
@@ -266,7 +276,8 @@ export const siteMetadata: ISiteMetadata = {
           selector: "div > span + span + span + span",
         },
         time: {
-          selector: "div[id^='ktorrent'] > #hidefl ~ span",
+          text: 0,
+          selector: ["div[id^='ktorrent'] > #hidefl ~ span[title]", "div[id^='ktorrent'] > span > span[title]"],
           attr: "title",
         },
       },
@@ -283,6 +294,28 @@ export const siteMetadata: ISiteMetadata = {
         ],
         filters: [{ name: "parseNumber" }],
       },
+      trueUploaded: {
+        ...SchemaMetadata.userInfo!.selectors!.trueUploaded,
+        filters: [
+          (query: string) => {
+            const queryMatch = query
+              .replace(/,/g, "")
+              .match(/((?:实际|真实)上传|(?:實際|真實)上傳|(?:Real|Actual) Uploaded).+?([\d.]+ ?[ZEPTGMK]?i?B)/);
+            return queryMatch && queryMatch.length === 3 ? parseSizeString(queryMatch[2]) : 0;
+          },
+        ],
+      },
+      trueDownloaded: {
+        ...SchemaMetadata.userInfo!.selectors!.trueDownloaded,
+        filters: [
+          (query: string) => {
+            const queryMatch = query
+              .replace(/,/g, "")
+              .match(/((?:实际|真实)下载|(?:實際|真實)下載|(?:Real|Actual) Downloaded).+?([\d.]+ ?[ZEPTGMK]?i?B)/);
+            return queryMatch && queryMatch.length === 3 ? parseSizeString(queryMatch[2]) : 0;
+          },
+        ],
+      },
       // 从顶端用户栏获取做种数，这样就可以避免对 /getusertorrentlist.php 页面的请求
       seeding: {
         selector: ["#info_block a[href*='getusertorrentlist.php'][href*='type=seeding']"],
@@ -298,6 +331,24 @@ export const siteMetadata: ISiteMetadata = {
         ...SchemaMetadata.userInfo!.selectors!.messageCount,
         selector: ["div[style*='background: red'] a[href*='messages.php']"],
       },
+    },
+    process: [
+      ...SchemaMetadata.userInfo!.process!.map((item) => ({
+        ...item,
+        requestConfig: {
+          ...item.requestConfig,
+          headers: {
+            ...(item.requestConfig?.headers || {}),
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        },
+      })),
+    ],
+    donorConfig: {
+      ...SchemaMetadata.userInfo?.donorConfig,
+      isAccountKept: true,
     },
   },
 
@@ -393,6 +444,7 @@ export const siteMetadata: ISiteMetadata = {
         { seedingBonus: 2400000, uploads: 100 },
         { seedingBonus: 9600000, uploads: 10 },
       ],
+      isKept: true,
       privilege: "用户不会因不活跃原因被临时封禁，初次升级赠送3枚永久邀请码",
     },
   ],

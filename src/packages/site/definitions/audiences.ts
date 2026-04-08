@@ -12,6 +12,7 @@ import NexusPHP, {
   SchemaMetadata,
 } from "../schemas/NexusPHP.ts";
 import { createDocument, parseSizeString, rot13, tryToNumber } from "../utils";
+import { set } from "es-toolkit/compat";
 
 export const siteMetadata: ISiteMetadata = {
   ...SchemaMetadata,
@@ -88,8 +89,19 @@ export const siteMetadata: ISiteMetadata = {
     CategoryInclbookmarked,
   ],
 
+  officialGroupPattern: [/(-Audies|.*@Audies|-ADE|-ADWeb|.*@ADWeb)/i],
+
   search: {
     ...SchemaMetadata.search!,
+    advanceKeywordParams: {
+      ...SchemaMetadata.search?.advanceKeywordParams!,
+      douban: {
+        requestConfigTransformer: ({ requestConfig: config }) => {
+          set(config!, "params.search_area", 5); // params "&search_area=4"
+          return config!;
+        },
+      },
+    },
     selectors: {
       ...SchemaMetadata.search!.selectors!,
       subTitle: {
@@ -229,6 +241,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "2048GB",
       ratio: 4.5,
       seedingBonus: 1200000,
+      isKept: true,
       privilege: "可以更新过期的外部信息。头号玩家(Extreme User)及以上用户会永远保留账号。",
     },
     {
@@ -239,6 +252,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "4096GB",
       ratio: 5.0,
       seedingBonus: 1500000,
+      isKept: true,
       privilege: "同头号玩家(Extreme User)",
     },
     {
@@ -249,6 +263,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "8192GB",
       ratio: 6.0,
       seedingBonus: 1800000,
+      isKept: true,
       privilege: "同一代宗师(Ultimate User)",
     },
     {
@@ -259,6 +274,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "10240GB",
       ratio: 8.0,
       seedingBonus: 2400000,
+      isKept: true,
       privilege:
         "保持等级期间会显示彩虹ID，做种积分要求逐年增加（具体数值以通知为准），彩虹照耀(Rainbow)用户未到更新后的要求会被降级",
     },

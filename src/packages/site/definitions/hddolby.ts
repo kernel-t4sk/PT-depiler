@@ -1,6 +1,7 @@
 import { type ISiteMetadata } from "../types";
 import { CategoryInclbookmarked, CategoryIncldead, CategorySpstate, SchemaMetadata } from "../schemas/NexusPHP.ts";
 import { allCustomTags, allTagSelectors, selectorSearchProgress, selectorSearchStatus } from "./hdhome.ts";
+import { set } from "es-toolkit/compat";
 
 export const siteMetadata: ISiteMetadata = {
   ...SchemaMetadata,
@@ -17,7 +18,7 @@ export const siteMetadata: ISiteMetadata = {
   schema: "NexusPHP",
 
   urls: ["https://www.hddolby.com/"],
-  formerHosts: ["hddolby.com"],
+  legacyUrls: ["https://hddolby.com/"],
 
   category: [
     {
@@ -159,8 +160,19 @@ export const siteMetadata: ISiteMetadata = {
     },
   ],
 
+  officialGroupPattern: [/-DBTV|-QHstudIo|Dream$|.*@dream/i],
+
   search: {
     ...SchemaMetadata.search!,
+    advanceKeywordParams: {
+      imdb: false, // 该站点不支持 imdb
+      tmdb: {
+        requestConfigTransformer: ({ requestConfig: config }) => {
+          set(config!, "params.search_area", 4); // params "&search_area=4"
+          return config!;
+        },
+      },
+    },
     selectors: {
       ...SchemaMetadata.search!.selectors!,
       subTitle: {
@@ -185,6 +197,10 @@ export const siteMetadata: ISiteMetadata = {
         filters: [{ name: "split", args: ["/", 0] }, { name: "parseNumber" }],
       },
     },
+  },
+
+  noLoginAssert: {
+    matchSelectors: ["script:contains('take2fa.php?returnto=')"],
   },
 
   levelRequirements: [
@@ -247,6 +263,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "2TB",
       ratio: 4.5,
       seedingBonus: 720000,
+      isKept: true,
       privilege: "Extreme User及以上用户会永远保留账号。",
     },
     {
@@ -256,6 +273,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "4TB",
       ratio: 5.0,
       seedingBonus: 1200000,
+      isKept: true,
       privilege: "无",
     },
     {
@@ -265,6 +283,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "8TB",
       ratio: 5.5,
       seedingBonus: 1680000,
+      isKept: true,
       privilege: "无",
     },
   ],

@@ -2,7 +2,7 @@
 import { ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { getBackupServerIcon } from "@ptd/backupServer";
-import type { DataTableHeader } from "vuetify/lib/components/VDataTable/types";
+import type { DataTableHeader } from "vuetify";
 
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
@@ -30,11 +30,11 @@ const showRestoreDialog = ref<boolean>(false);
 const showDeleteDialog = ref<boolean>(false);
 
 const fullTableHeader = [
-  { title: t("SetBackup.table.type"), key: "type", align: "center" },
-  { title: t("SetBackup.table.name"), key: "name", align: "start" },
+  { title: t("common.type"), key: "type", align: "center" },
+  { title: t("common.name"), key: "name", align: "start" },
   { title: t("SetBackup.table.backupFields"), key: "backupFields", align: "start", sortable: false },
   { title: t("SetBackup.table.lastBackupAt"), key: "lastBackupAt", align: "end" },
-  { title: t("SetBackup.table.enabled"), key: "enabled", align: "center" },
+  { title: t("common.enable"), key: "enabled", align: "center" },
   { title: t("common.action"), key: "action", sortable: false },
 ] as DataTableHeader[];
 const tableSelected = ref<TBackupServerKey[]>([]);
@@ -98,7 +98,7 @@ async function confirmDeleteBackupServer(id: TBackupServerKey) {
           @click="deleteBackupServer(tableSelected)"
         />
 
-        <v-divider vertical class="mx-2" />
+        <v-divider class="mx-2" inset vertical />
 
         <NavButton
           :loading="doBackupStatus[localBackup]"
@@ -157,14 +157,19 @@ async function confirmDeleteBackupServer(id: TBackupServerKey) {
       <template #item.action="{ item }">
         <v-btn-group class="table-action" density="compact" variant="plain">
           <v-btn
+            :title="t('SetBackup.table.action.backupNow')"
             :loading="doBackupStatus[item.id]"
             color="green"
             icon="mdi-cloud-upload"
             size="small"
             @click="doBackup(item.id)"
           />
-
-          <v-btn icon="mdi-view-list" size="small" @click="showHistory(item.id)" />
+          <v-btn
+            :title="t('SetBackup.table.action.viewHistoryBackup')"
+            icon="mdi-view-list"
+            size="small"
+            @click="showHistory(item.id)"
+          />
 
           <v-btn
             :title="t('common.edit')"

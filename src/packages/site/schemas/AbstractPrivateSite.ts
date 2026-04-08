@@ -1,4 +1,5 @@
 // 所有PT站点的基类
+import Sizzle from "sizzle";
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import { intersection, pascalCase, pick, toMerged, uniq } from "es-toolkit";
 import { get, has, set } from "es-toolkit/compat";
@@ -13,7 +14,7 @@ import {
   type ISiteMetadata,
   type IUserInfo,
   type TLevelId,
-  type TUrlPatterns,
+  type TPatterns,
 } from "../types";
 
 export const SchemaMetadata: Partial<ISiteMetadata> = {
@@ -38,11 +39,11 @@ export default class PrivateSite extends BittorrentSite {
     );
   }
 
-  protected get noLoginCheckUrlPatterns(): TUrlPatterns | false {
+  protected get noLoginCheckUrlPatterns(): TPatterns | false {
     return this.metadata.noLoginAssert?.urlPatterns ?? [/doLogin|login|verify|checkpoint|returnto/gi];
   }
 
-  protected get noLoginCheckRefreshHeaderPattern(): TUrlPatterns | false {
+  protected get noLoginCheckRefreshHeaderPattern(): TPatterns | false {
     return this.metadata.noLoginAssert?.refreshHeaderPattern ?? this.noLoginCheckUrlPatterns;
   }
 
@@ -79,6 +80,16 @@ export default class PrivateSite extends BittorrentSite {
         }
       }
 
+      const noLoginAssertMatchSelectors = this.metadata.noLoginAssert?.matchSelectors ?? [];
+      if (noLoginAssertMatchSelectors.length > 0) {
+        const matchFn = res.data instanceof Document ? (d: any, m: string) => Sizzle(m, d).length > 0 : has;
+        for (const matchSelector of noLoginAssertMatchSelectors) {
+          if (matchFn(res.data, matchSelector)) {
+            return false;
+          }
+        }
+      }
+
       if (this.metadata.noLoginAssert?.checkResponseContent === true) {
         const responseText =
           request.responseType === "document" ? request.responseXML?.documentElement.outerHTML : request.responseText;
@@ -89,7 +100,7 @@ export default class PrivateSite extends BittorrentSite {
         }
       }
     } catch (e) {
-      // Catch Nothing
+      console.debug(e);
     }
 
     return true;

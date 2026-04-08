@@ -1,7 +1,7 @@
 // noinspection ES6PreferShortImport
 
 import type { AxiosRequestConfig } from "axios";
-import { TSiteID, TSiteHost, TSiteUrl, TSiteFullUrl, TUrlPatterns } from "./base";
+import { TSiteID, TSiteHost, TSiteUrl, TSiteFullUrl, TPatterns } from "./base";
 import type { ITorrent } from "./torrent";
 import type { ILevelRequirement, IUserInfo } from "./userinfo";
 import type { IElementQuery, ISearchCategories, ISearchConfig, ISearchEntryRequestConfig } from "./search";
@@ -11,11 +11,14 @@ import type PrivateSite from "../schemas/AbstractPrivateSite.ts";
 export type SiteSchema =
   | "AbstractBittorrentSite"
   | "AbstractPrivateSite"
-  | "NexusPHP"
-  | "Unit3D"
+  | "AvistazNetwork"
   | "Gazelle"
   | "GazelleJSONAPI"
-  | "AvistazNetwork"
+  | "Luminance"
+  | "NexusPHP"
+  | "Rartracker"
+  | "TCG"
+  | "Unit3D"
   | string;
 
 type TUserInfoParseKey = keyof Omit<IUserInfo, "site" | "status" | "updateAt">;
@@ -73,7 +76,7 @@ export interface ISiteMetadata {
   schema?: SiteSchema;
 
   /**
-   * 完整的网站地址，
+   * 网站地址
    *
    * 1. 列表中第一个网址会作为默认的使用地址
    * 2. 如果网站支持 `https` ，请优先考虑填写 `https` 的地址
@@ -83,18 +86,14 @@ export interface ISiteMetadata {
   urls: TSiteUrl[];
 
   /**
-   * host 和 formerHosts 不支持填写 加密后的网站域名，不会自动进行 rot13 解码，如果需要请填写类似
-   *  host: rot13('xxxxx')
+   * 站点过去曾经使用过的，但现在已不再使用的网址
+   * 支持 rot13 格式，以防止在配置时泄露
+   *
+   * 请注意：
+   * 1. 如果一个站点更换域名，请不要直接删除 urls 中的定义，而是应该将旧域名放入 legacyUrls 中
+   * 2. 如果一个站点曾经在 ptpp 中定义过，如果该域名未在 urls 中出现过，则 *必须* 将其放入 legacyUrls 中
    */
-  host?: TSiteHost; // 站点域名，如果不存在，则从url中获取
-  readonly formerHosts?: TSiteHost[]; // 站点过去曾经使用过的，但现在已不再使用的域名
-
-  /**
-   * 该站点已经！完全！死亡！没有任何恢复的可能性
-   * - 对临时性的站点关闭，更建议用户使用 userConfig.isOffline 属性
-   * - 对于已经死亡的站点，插件：①不会在添加时显示该站点；②已添加的获取搜索结果、个人信息功能全部停止
-   */
-  isDead?: true;
+  legacyUrls?: TSiteUrl[];
 
   /**
    * 站点图标，具体处理过程见 `../utils/favicon.ts` 的说明
@@ -106,6 +105,15 @@ export interface ISiteMetadata {
    */
   favicon?: `${TSiteFullUrl}${string}` | `data:image/${string}` | `./${string}.${"png" | "ico" | "svg" | string}`;
 
+  /**
+   * 该站点已经！完全！死亡！没有任何恢复的可能性
+   * - 对临时性的站点关闭，更建议用户使用 userConfig.isOffline 属性
+   * - 对于已经死亡的站点，插件：①不会在添加时显示该站点；②已添加的获取搜索结果、个人信息功能全部停止
+   *
+   * 对已经标记死亡的站点，建议注释或删除之后的所有配置项
+   */
+  isDead?: true;
+
   category?: ISearchCategories[];
 
   /**
@@ -114,6 +122,12 @@ export interface ISiteMetadata {
    *      如果有设置 siteMetadata.{search, searchEntry[*], userInfo.process[*]}.requestDelay 则会叠加
    */
   requestDelay?: number;
+
+  /**
+   * 如果定义了 officialGroupPattern ，且如果搜索的种子标题中有匹配
+   * 当用户开启对应功能时，会自动添加 `官方` 的标签
+   */
+  officialGroupPattern?: TPatterns;
 
   /**
    * 站点搜索方法配置（主要用于插件 options 的适配）
@@ -152,7 +166,7 @@ export interface ISiteMetadata {
      *
      * 匹配对象为 location.href ，依次匹配，任一匹配成功，则会被认为是种子列表页，
      */
-    urlPattern?: TUrlPatterns;
+    urlPattern?: TPatterns;
 
     /**
      * 由于侧边栏组件先判断是否是 list ，导致某些应该是详情页的页面被误认为是列表页，
@@ -160,9 +174,13 @@ export interface ISiteMetadata {
      *
      * 匹配方式和 urlPattern 相同
      */
-    excludeUrlPattern?: TUrlPatterns;
+    excludeUrlPattern?: TPatterns;
 
-    mergeSearchSelectors?: boolean; // 是否合并 search.selectors 中的配置到此处的 selectors 中，默认为 true
+    /**
+     * 是否合并 search.selectors 中的配置到此处的 selectors 中，默认为 true
+     * 对使用 API 请求的站点，此处要显式声明为 false
+     */
+    mergeSearchSelectors?: boolean;
 
     /**
      * 对于种子列表页的解析配置，默认会使用 search.requestConfig.selectors 中的配置作为垫片
@@ -193,7 +211,7 @@ export interface ISiteMetadata {
      * urlPattern 无法进行自动生成，需要显式声明（一般情况下 schema 中已有相关声明）
      * 其他表现和 list.urlPattern 相同。
      */
-    urlPattern?: TUrlPatterns;
+    urlPattern?: TPatterns;
 
     /**
      * 插件获取种子详情页时的配置，默认是在种子搜索时无法获取 link 的特殊站点使用，在使用时有垫片如下：
@@ -257,14 +275,20 @@ export interface ISiteMetadata {
      * 返回的 responseURL 中，哪些 URL 模式表示未登录，未设置时默认为 [/doLogin|login|verify|checkpoint|returnto/gi]
      * 如果请求的 URL 匹配该数组中的任意一个，则认为未登录
      */
-    urlPatterns?: TUrlPatterns | false;
+    urlPatterns?: TPatterns | false;
 
     /**
      * 如果响应头中有 refresh: <time>[;,] url=<url> 字段，
      * 且其中的 <url> 字段匹配该正则表达式，则认为未登录，未设置时默认为 noLoginAssert.urlPatterns 对应的内容
      * 如果此时 noLoginAssert.urlPatterns 为 false，则该项也会被设置为 false
      */
-    refreshHeaderPattern?: TUrlPatterns | false;
+    refreshHeaderPattern?: TPatterns | false;
+
+    /**
+     * 判断下面 matchSelectors 是否存在，如果存在则判断为未登录
+     * 对 Document 的返回 使用 Sizzle().length > 0 进行判断，对其他情况如 json 返回使用 es-toolkit/compact 的 has 方法进行判断
+     */
+    matchSelectors?: string[];
 
     /**
      * 是否严格检查响应内容，未设置时默认为 false
@@ -333,12 +357,21 @@ export interface ISiteMetadata {
      */
     requestDelay?: number;
 
+    /**
+     * donorConfig 配置捐赠者（黄星）的特殊权限
+     * - isAccountKept 捐赠者是否免疫账户不活跃封禁
+     * - bonusPerHourMultiplier 捐赠者的时魔倍数，如果能直接使用 selector 选出正确的时魔，此系数应设为 1
+     */
+    donorConfig?: {
+      isAccountKept?: boolean;
+      bonusPerHourMultiplier?: number;
+    };
+
     selectors?: { [userinfoKey in TUserInfoParseKey]?: IElementQuery }; // 用户信息相关选择器（全部步骤均可使用）
   };
 
   /**
    * 站点用户等级定义
-   * 对设置了 isDead: true 的站点请注释或删除该项
    */
   levelRequirements?: ILevelRequirement[];
 
@@ -390,7 +423,7 @@ export interface ISiteUserConfig {
   // 在批量下载每个种子时，与（本站）上一个种子之间的间隔时间，单位为秒，如果不设置默认为 0
   downloadInterval?: number;
 
-  // 上传速度限制，单位为 MB/s，0 或不填时不限速，用于推送种子文件到下载器的时候，传递上传速度限制
+  // 上传速度限制，单位为 MiB/s，0 或不填时不限速，用于推送种子文件到下载器的时候，传递上传速度限制
   uploadSpeedLimit?: number;
 
   // 是否允许 content-script 访问该站点，默认为 true

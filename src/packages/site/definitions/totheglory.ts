@@ -2,7 +2,7 @@ import Sizzle from "sizzle";
 import { set } from "es-toolkit/compat";
 
 import { type ISiteMetadata } from "../types";
-import { buildCategoryOptions, extractContent, parseSizeString } from "../utils";
+import { buildCategoryOptionsFromList, extractContent, parseSizeString } from "../utils";
 
 const categoryMovieMap = [
   "电影DVDRip",
@@ -68,7 +68,7 @@ export const siteMetadata: ISiteMetadata = {
     {
       name: "分类（影视&音乐）",
       key: "cat_movie",
-      options: buildCategoryOptions(categoryMovieMap),
+      options: buildCategoryOptionsFromList(categoryMovieMap),
       cross: { mode: "brackets" }, // 因为ttg的分类是合并到搜索字符串中的，所以这里先置为 brackets，然后在search.requestConfigTransformer 做修改
     },
     {
@@ -105,6 +105,8 @@ export const siteMetadata: ISiteMetadata = {
       cross: { mode: "brackets" },
     },
   ],
+
+  officialGroupPattern: [/-(WiKi|DoA|.*TTG|NGB|ARiN)/i],
 
   search: {
     keywordPath: "params.search_field",
@@ -197,7 +199,7 @@ export const siteMetadata: ISiteMetadata = {
     selectors: {
       id: { selector: "a[tid]", attr: "tid" },
       title: { selector: "h1" },
-      link: { selector: 'img[alt="Bittorent"] + a[href^="/dl/"]', attr: "href" },
+      link: { selector: 'td > a[href*="/dl/"][onclick*="copyToClip"]', attr: "href" },
     },
   },
 
@@ -240,12 +242,21 @@ export const siteMetadata: ISiteMetadata = {
           levelName: {
             selector: ["td.rowhead:contains('等级') + td", "td.rowhead:contains('等級') + td"],
           },
+          isDonor: {
+            text: false,
+            selector: ["img[alt='Donor']"],
+            elementProcess: () => true,
+          },
           bonus: {
             selector: ["td.rowhead:contains('积分') + td", "td.rowhead:contains('積分') + td"],
             filters: [{ name: "parseNumber" }],
           },
           joinTime: {
             selector: ["td.rowhead:contains('注册日期') + td", "td.rowhead:contains('註冊日期') + td"],
+            filters: [{ name: "parseTime" }],
+          },
+          lastAccessAt: {
+            selector: ["td.rowhead:contains('上次访问') + td", "td.rowhead:contains('Last seen') + td"],
             filters: [{ name: "parseTime" }],
           },
           seeding: {
@@ -289,6 +300,10 @@ export const siteMetadata: ISiteMetadata = {
         },
       },
     ],
+    donorConfig: {
+      isAccountKept: true,
+      bonusPerHourMultiplier: 1,
+    },
   },
 
   levelRequirements: [
@@ -367,6 +382,7 @@ export const siteMetadata: ISiteMetadata = {
       interval: "P32W",
       downloaded: "3.5TB",
       ratio: 5.0,
+      isKept: true,
       privilege: "永远保留账号",
     },
     {
@@ -376,6 +392,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "5TB",
       uploaded: "50TB",
       ratio: 6.0,
+      isKept: true,
       privilege: "无",
     },
     {
@@ -385,6 +402,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "10TB",
       uploaded: "100TB",
       ratio: 6.0,
+      isKept: true,
       privilege: "无",
     },
     {

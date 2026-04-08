@@ -11,7 +11,7 @@ export const siteMetadata: ISiteMetadata = {
   schema: "NexusPHP",
 
   urls: ["https://www.hd.ai/"],
-  host: "hd.ai",
+  legacyUrls: ["https://hd.ai/"],
 
   // refs: https://github.com/pt-plugins/PT-Plugin-Plus/commit/fc106917a4a9b5834633e5d4903912e02846235f
   isDead: true,
@@ -61,6 +61,7 @@ export const siteMetadata: ISiteMetadata = {
       interval: "P40W",
       downloaded: "750GB",
       ratio: 3.05,
+      isKept: true,
       privilege: "得到三个邀请名额；可以查看其它用户的评论、帖子历史。Veteran User及以上用户会永远保留账号",
     },
     {
@@ -69,6 +70,7 @@ export const siteMetadata: ISiteMetadata = {
       interval: "P60W",
       downloaded: "1TB",
       ratio: 3.55,
+      isKept: true,
       privilege: "可以更新过期的外部信息；可以查看Extreme User论坛",
     },
     {
@@ -77,6 +79,7 @@ export const siteMetadata: ISiteMetadata = {
       interval: "P80W",
       downloaded: "1.5TB",
       ratio: 4.05,
+      isKept: true,
       privilege: "得到五个邀请名额",
     },
     {
@@ -85,6 +88,7 @@ export const siteMetadata: ISiteMetadata = {
       interval: "P100W",
       downloaded: "3TB",
       ratio: 4.55,
+      isKept: true,
       privilege: "得到十个邀请名额",
     },
   ],

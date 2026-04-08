@@ -116,6 +116,7 @@ const levelRequirements: (ILevelRequirement & { levelId?: string })[] = [
     interval: "P24W",
     downloaded: "2000GB",
     ratio: 7,
+    isKept: true,
     privilege: "魔力值加成：+6%；永遠保留",
   },
   {
@@ -124,6 +125,7 @@ const levelRequirements: (ILevelRequirement & { levelId?: string })[] = [
     interval: "P28W",
     downloaded: "2500GB",
     ratio: 8,
+    isKept: true,
     privilege: "魔力值加成：+7%",
   },
   {
@@ -132,6 +134,7 @@ const levelRequirements: (ILevelRequirement & { levelId?: string })[] = [
     interval: "P32W",
     downloaded: "3000GB",
     ratio: 9,
+    isKept: true,
     privilege: "魔力值加成：+8%",
   },
   {
@@ -141,6 +144,10 @@ const levelRequirements: (ILevelRequirement & { levelId?: string })[] = [
     groupType: "vip",
   },
 ];
+
+function extractTorrentIdFromUrl(url: string): string | undefined {
+  return url.match(/(?:\/detail\/|#\/torrent\/)(\d+)/)?.[1];
+}
 
 export const siteMetadata: ISiteMetadata = {
   version: 1,
@@ -156,15 +163,16 @@ export const siteMetadata: ISiteMetadata = {
   type: "private",
   schema: "mTorrent",
 
-  urls: [
-    "uggcf://xc.z-grnz.pp/",
-    "uggcf://mc.z-grnz.vb/",
-    "uggcf://kc.z-grnz.pp/",
-    "uggcf://nc.z-grnz.pp/",
-    "uggcf://arkg.z-grnz.pp/", // Next
-    "uggcf://bo.z-grnz.pp/",
+  urls: ["uggcf://xc.z-grnz.pp/", "uggcf://mc.z-grnz.vb/", "uggcf://bo.z-grnz.pp/"],
+  legacyUrls: [
+    "https://h5.m-team.cc/",
+    "https://xp.m-team.io/",
+    "https://pt.m-team.cc/",
+    "https://tp.m-team.cc/",
+    "https://xp.m-team.cc/",
+    "https://ap.m-team.cc/",
+    "https://next.m-team.cc/",
   ],
-  formerHosts: ["xp.m-team.io", "pt.m-team.cc", "tp.m-team.cc"],
 
   category: [
     {
@@ -180,6 +188,7 @@ export const siteMetadata: ISiteMetadata = {
       name: "類別（综合）",
       key: "categories_normal",
       keyPath: "data",
+      notes: "请先设置分类入口为“综合”！请勿与 成人 区类别同时选择！",
       options: siteCategory.filter((item) => item.type === "normal"),
       cross: { mode: "brackets", key: "categories" },
     },
@@ -187,6 +196,7 @@ export const siteMetadata: ISiteMetadata = {
       name: "類別（成人）",
       key: "categories_adult",
       keyPath: "data",
+      notes: "请先设置分类入口为“成人”！请勿与 综合 区类别同时选择！",
       options: siteCategory.filter((item) => item.type === "adult"),
       cross: { mode: "brackets", key: "categories" },
     },
@@ -284,6 +294,8 @@ export const siteMetadata: ISiteMetadata = {
     },
   ],
 
+  officialGroupPattern: [/-(.*mteam|mpad|tnp|BMDru|MWEB)/i],
+
   search: {
     keywordPath: "data.keyword",
     requestConfig: {
@@ -370,6 +382,7 @@ export const siteMetadata: ISiteMetadata = {
           },
           levelId: { selector: "data.role", filters: [{ name: "parseNumber" }] },
           bonus: { selector: "data.memberCount.bonus", filters: [{ name: "parseNumber" }] },
+          lastAccessAt: { selector: "data.memberStatus.lastBrowse", filters: [{ name: "parseTime" }] },
         },
       },
       {
@@ -460,17 +473,22 @@ export const siteMetadata: ISiteMetadata = {
   ],
 
   detail: {
-    urlPattern: ["/detail/"],
+    urlPattern: ["/detail/", "#/torrent/\\d+"],
     selectors: {
       id: {
         selector: ":self",
         elementProcess: (element: Document) => {
-          const url = element.URL;
-          const match = url.match(/\/detail\/(\d+)/);
-          return match ? match[1] : url;
+          return extractTorrentIdFromUrl(element.URL) ?? element.URL;
         },
       },
-      title: { selector: "h2.title > span.align-middle" },
+      title: {
+        selector: ["h2 > span.align-middle", "title"],
+        filters: [
+          // 当回落到 title 中替换掉两侧的无关内容
+          { name: "replace", args: ['M-Team - TP :: 種子詳情 "', ""] },
+          { name: "replace", args: ['" - Powered by mTorrent', ""] },
+        ],
+      },
       link: { text: "" },
     },
   },
@@ -602,9 +620,35 @@ interface IMTeamRawResp<D> {
  * M-Team 站点类，交互通过 API 进行
  */
 export default class MTeam extends PrivateSite {
+  get normalizedSiteUrl(): string {
+    try {
+      const siteUrl = new URL(this.url);
+      siteUrl.hash = "";
+      siteUrl.search = "";
+      siteUrl.pathname = "/";
+      return siteUrl.toString();
+    } catch (error) {
+      return this.url;
+    }
+  }
+
   // 2024-06-18 統一切換為 api.域名 (其他可用域名請自行查看接口)
   get apiBaseUrl(): string {
-    return this.url.replace(/(.+?)\./, "https://api.");
+    try {
+      const apiUrl = new URL(this.normalizedSiteUrl);
+      const hostParts = apiUrl.hostname.split(".");
+      if (hostParts.length > 0) {
+        hostParts[0] = "api";
+      }
+      apiUrl.hostname = hostParts.join(".");
+      return apiUrl.toString();
+    } catch (error) {
+      return this.normalizedSiteUrl.replace(/(.+?)\./, "https://api.");
+    }
+  }
+
+  private buildConfiguredDetailUrl(torrentId: string | number): string {
+    return new URL(`/detail/${torrentId}`, this.normalizedSiteUrl).toString();
   }
 
   public override async request<T>(
@@ -622,7 +666,7 @@ export default class MTeam extends PrivateSite {
     axiosConfig.headers = {
       ...(axiosConfig.headers ?? {}),
       "x-api-key": this.userConfig.inputSetting!.token ?? "", // FIXME 是否允许我们设置一个空字符？
-      "origin": this.url,   // MTeam site requires Origin header for CORS validation (added 2025-10-28)
+      origin: this.normalizedSiteUrl, // MTeam site requires Origin header for CORS validation (added 2025-10-28)
     };
 
     return super.request<T>(axiosConfig, checkLogin);
@@ -633,7 +677,33 @@ export default class MTeam extends PrivateSite {
   }
 
   protected override fixLink(uri: string, requestConfig: AxiosRequestConfig): string {
-    return super.fixLink(uri, { ...requestConfig, baseURL: this.url }); // 将 baseURL 重新指向回 web 页面
+    return super.fixLink(uri, { ...requestConfig, baseURL: this.normalizedSiteUrl }); // 将 baseURL 重新指向回 web 页面
+  }
+
+  public override async transformDetailPage(doc: Document): Promise<ITorrent> {
+    const torrent = await super.transformDetailPage(doc);
+    const torrentId = torrent.id || extractTorrentIdFromUrl(doc.URL);
+
+    if (torrentId) {
+      torrent.id = String(torrentId);
+      torrent.url = this.buildConfiguredDetailUrl(torrent.id);
+      torrent.link ||= torrent.url;
+    }
+
+    return torrent;
+  }
+
+  private mapDiscountToTag(discount?: string | null): ITorrentTag | undefined {
+    switch (discount) {
+      case "FREE":
+        return { name: "Free", color: "blue" };
+      case "PERCENT_70":
+        return { name: "30%", color: "indigo" };
+      case "PERCENT_50":
+        return { name: "50%", color: "orange" };
+      default:
+        return undefined;
+    }
   }
 
   protected override parseTorrentRowForTags(
@@ -643,23 +713,26 @@ export default class MTeam extends PrivateSite {
   ): Partial<ITorrent> {
     const tags: ITorrentTag[] = [];
 
-    // 处理 成人区限时free
-    if (row.status?.mallSingleFree) {
-      tags.push({ name: "Free", color: "blue" });
+    // 优先处理全站促销规则
+    if (row.status?.promotionRule) {
+      const globalDiscount = row.status.promotionRule.discount ?? "NORMAL";
+      const tag = this.mapDiscountToTag(globalDiscount);
+      if (tag) tags.push(tag);
     } else {
-      // 其他促销状态 从 status.discount 中获取
-      const discount = row.status?.discount ?? "NORMAL";
-      if (discount == "FREE") {
+      // 处理 成人区限时free
+      if (row.status?.mallSingleFree) {
         tags.push({ name: "Free", color: "blue" });
-      } else if (discount == "PERCENT_70") {
-        tags.push({ name: "30%", color: "indigo" });
-      } else if (discount == "PERCENT_50") {
-        tags.push({ name: "50%", color: "orange" });
+      } else {
+        // 其他促销状态 从 status.discount 中获取
+        const discount = row.status?.discount ?? "NORMAL";
+        const tag = this.mapDiscountToTag(discount);
+        if (tag) tags.push(tag);
       }
     }
 
     if (row.labelsNew && row.labelsNew.length > 0) {
-      tags.push(...row.labelsNew.map((x) => ({ name: x })));
+      const uniqueLabels = Array.from(new Set(row.labelsNew)); // 去重
+      tags.push(...uniqueLabels.map((x) => ({ name: x })));
     }
 
     torrent.tags = tags;
@@ -755,12 +828,19 @@ export default class MTeam extends PrivateSite {
   }
 
   public override async getTorrentDownloadLink(torrent: ITorrent): Promise<string> {
-    // fix: 如果 torrent 对象没有 id ，尝试从 link 中提取 (https://github.com/pt-plugins/PT-depiler/issues/600)
-    if (!torrent.id && torrent.link) {
-      const match = torrent.link.match(/\/detail\/(\d+)/);
-      if (match) {
-        torrent.id = match[1];
+    // fix: 如果 torrent 对象没有 id ，尝试从详情页 URL 中提取
+    if (!torrent.id) {
+      const torrentId = [torrent.link, torrent.url]
+        .map((candidate) => (candidate ? extractTorrentIdFromUrl(candidate) : undefined))
+        .find(Boolean);
+
+      if (torrentId) {
+        torrent.id = torrentId;
       }
+    }
+
+    if (!torrent.id) {
+      throw new Error("Unable to resolve M-Team torrent ID");
     }
 
     const { data } = await this.request<IMTeamRawResp<string>>({

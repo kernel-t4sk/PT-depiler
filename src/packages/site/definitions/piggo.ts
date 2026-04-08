@@ -114,19 +114,24 @@ export const siteMetadata: ISiteMetadata = {
     },
   ],
 
+  officialGroupPattern: [/PigoHD|PigoWeb|PiGoNF/i],
+
   userInfo: {
     ...SchemaMetadata.userInfo!,
     selectors: {
       ...SchemaMetadata.userInfo!.selectors!,
       messageCount: {
         text: 0,
-        selector: "div#messages1 > div.layui-layer-content",
-        filters: [
-          (query: string | number) => {
-            const queryMatch = String(query || "").match(/(\d+)/);
-            return queryMatch && queryMatch.length >= 2 ? parseInt(queryMatch[1]) : 0;
-          },
-        ],
+        selector: "div.message-alerts-container",
+        elementProcess: (e: HTMLElement) => {
+          let total = 0;
+          const alertDivs = e.querySelectorAll("div.message-alert");
+          for (const div of alertDivs) {
+            const numberMatch = div.textContent?.match(/(\d+)/);
+            total += numberMatch && numberMatch.length >= 2 ? parseInt(numberMatch[1], 10) : 0;
+          }
+          return total;
+        },
       },
       hnrPreWarning: {
         text: 0,
@@ -229,6 +234,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "6TB",
       ratio: 6,
       seedingBonus: 1000000,
+      isKept: true,
       privilege: "得到五个邀请名额，天蓬元帅及以上账号永久保留。",
     },
   ],

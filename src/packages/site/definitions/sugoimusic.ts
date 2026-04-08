@@ -1,8 +1,8 @@
 import { type ISiteMetadata } from "../types";
-import { SchemaMetadata } from "../schemas/GazelleJSONAPI.ts";
+// import { SchemaMetadata } from "../schemas/GazelleJSONAPI.ts";
 
 export const siteMetadata: ISiteMetadata = {
-  ...SchemaMetadata,
+  // ...SchemaMetadata,
 
   version: 1,
   id: "sugoimusic",
@@ -18,7 +18,18 @@ export const siteMetadata: ISiteMetadata = {
   schema: "GazelleJSONAPI",
 
   urls: ["https://sugoimusic.me/"],
-  formerHosts: [],
+
+  // Official recruitment on JPS is closed + extensive downtime
+  isDead: true,
+
+  /*
+  search: {
+    ...SchemaMetadata.search!,
+    advanceKeywordParams: {
+      imdb: false,
+    },
+  },
+  */
 
   levelRequirements: [
     {
@@ -46,6 +57,7 @@ export const siteMetadata: ISiteMetadata = {
       uploads: 5,
       uploaded: "0B",
       ratio: 0,
+      isKept: true,
       privilege: "Comment in Suggestions forum; Inactivity-pruning disabled",
     },
     {
@@ -55,6 +67,7 @@ export const siteMetadata: ISiteMetadata = {
       uploads: 25,
       uploaded: "1GB",
       ratio: 0,
+      isKept: true,
       privilege:
         "Power User Forum; Batch download torrents; Collage subscriptions; Edit artist/group info; Make new suggestions",
     },
@@ -65,6 +78,7 @@ export const siteMetadata: ISiteMetadata = {
       uploads: 50,
       uploaded: "5GB",
       ratio: 0,
+      isKept: true,
       privilege: "1 Personal collage; Submit 1 login background; Add/delete own screenshots",
     },
     {
@@ -74,6 +88,7 @@ export const siteMetadata: ISiteMetadata = {
       uploads: 200,
       uploaded: "20GB",
       ratio: 0,
+      isKept: true,
       privilege: "Invite forum; 2 Personal collages; Comment on suggestions/bugs forums",
     },
     {
@@ -83,6 +98,7 @@ export const siteMetadata: ISiteMetadata = {
       uploads: 500,
       uploaded: "50GB",
       ratio: 0,
+      isKept: true,
       privilege: "Search results beyond page 20; 4 Personal collages; Rename own collages",
     },
     {
@@ -92,6 +108,7 @@ export const siteMetadata: ISiteMetadata = {
       uploads: 1000,
       uploaded: "200GB",
       ratio: 0,
+      isKept: true,
       privilege: "Elite Forum; 5 Personal collages; Edit any torrent; Add artists to groups",
     },
     {
@@ -101,6 +118,7 @@ export const siteMetadata: ISiteMetadata = {
       uploads: 2000,
       uploaded: "300GB",
       ratio: 0,
+      isKept: true,
       privilege: "Create polls; Delete tags",
     },
     {
@@ -110,6 +128,7 @@ export const siteMetadata: ISiteMetadata = {
       uploads: 3000,
       uploaded: "500GB",
       ratio: 0,
+      isKept: true,
       privilege: "6 Personal collages; Create a forum (with staff approval of topic)",
     },
     {
@@ -119,6 +138,7 @@ export const siteMetadata: ISiteMetadata = {
       uploads: 5000,
       uploaded: "2TB",
       ratio: 0,
+      isKept: true,
       privilege: "Torrent Master forum; 7 Personal collages; Project Team invite; Forum double post",
     },
     {
@@ -128,6 +148,7 @@ export const siteMetadata: ISiteMetadata = {
       uploads: 7500,
       uploaded: "3TB",
       ratio: 0,
+      isKept: true,
       privilege: "8 Personal collages; Submit a contest",
     },
     {
@@ -137,6 +158,7 @@ export const siteMetadata: ISiteMetadata = {
       uploads: 10000,
       uploaded: "5TB",
       ratio: 0,
+      isKept: true,
       privilege: "9 Personal collages; Request debug info; JPS Blue horse badge",
     },
     {
@@ -146,6 +168,7 @@ export const siteMetadata: ISiteMetadata = {
       uploads: 15000,
       uploaded: "10TB",
       ratio: 0,
+      isKept: true,
       privilege: "Unlimited collages & invites; Custom badge; Create multiple forums",
     },
     {
@@ -155,6 +178,7 @@ export const siteMetadata: ISiteMetadata = {
       uploads: 20000,
       uploaded: "50TB",
       ratio: 0,
+      isKept: true,
       privilege: "Custom forum header colour; Personal class name; Secret perks",
     },
   ],

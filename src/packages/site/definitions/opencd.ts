@@ -232,6 +232,8 @@ export const siteMetadata: ISiteMetadata = {
     },
   ],
 
+  officialGroupPattern: ["OpenCD", "LLM", "TSxD", "KHQ"],
+
   search: {
     ...SchemaMetadata.search,
     advanceKeywordParams: {
@@ -342,6 +344,7 @@ export const siteMetadata: ISiteMetadata = {
       interval: "P25W",
       ratio: 3.5,
       alternative: [{ downloaded: "600GB" }, { uploads: 200 }],
+      isKept: true,
       privilege:
         "得到五个邀请名额；可以查看用户列表，可以查看其它用户的评论、帖子历史。贵嫔-正三品(Veteran User)及以上用户会永远保留账号。",
     },
@@ -352,6 +355,7 @@ export const siteMetadata: ISiteMetadata = {
       interval: "P25W",
       ratio: 4.0,
       alternative: [{ downloaded: "1TB" }, { uploads: 300 }],
+      isKept: true,
       privilege: "得到六个邀请名额；可以更新过期的外部信息。",
     },
     {
@@ -361,6 +365,7 @@ export const siteMetadata: ISiteMetadata = {
       interval: "P30W",
       ratio: 4.5,
       alternative: [{ downloaded: "2TB" }, { uploads: 450 }],
+      isKept: true,
       privilege: "得到七个邀请名额；查看种子文件的结构。",
     },
     {
@@ -370,16 +375,17 @@ export const siteMetadata: ISiteMetadata = {
       interval: "P30W",
       ratio: 5.0,
       alternative: [{ downloaded: "3TB" }, { uploads: 600 }],
+      isKept: true,
       privilege: "得到十个邀请名额。",
     },
     { id: 100, name: "貴賓(VIP)", groupType: "vip" },
-    { id: 101, name: "養老族", groupType: "vip" },
-    { id: 201, name: "保種員", groupType: "manager" },
-    { id: 202, name: "發布員", groupType: "manager" },
+    { id: 101, name: "養老族", nameAka: ["养老族"], groupType: "vip" },
+    { id: 201, name: "保種員", nameAka: ["保种员"], groupType: "manager" },
+    { id: 202, name: "發布員", nameAka: ["发布员"], groupType: "manager" },
     { id: 203, name: "工作人員", groupType: "manager" },
     { id: 204, name: "管理员", groupType: "manager" },
-    { id: 205, name: "論壇版主", groupType: "manager" },
-    { id: 206, name: "總版主", groupType: "manager" },
+    { id: 205, name: "論壇版主", nameAka: ["论坛版主"], groupType: "manager" },
+    { id: 206, name: "總版主", nameAka: ["总版主"], groupType: "manager" },
     { id: 207, name: "維護開发員", groupType: "manager" },
   ],
 };

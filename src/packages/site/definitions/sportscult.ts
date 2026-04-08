@@ -1,10 +1,10 @@
 /**
- * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/hdtorrents.yml
+ * @JackettDefinitions https://github.com/Jackett/Jackett/blob/master/src/Jackett.Common/Definitions/sportscult.yml
  * @JackettIssue https://github.com/Jackett/Jackett/issues/1330
  */
 import type { ISiteMetadata, IUserInfo } from "../types.ts";
 import PrivateSite from "../schemas/AbstractPrivateSite.ts";
-import { parseSizeString } from "../utils.ts";
+import { parseSizeString, buildCategoryOptionsFromDict } from "../utils.ts";
 import Sizzle from "sizzle";
 
 const categoryMap: Record<number, string> = {
@@ -97,7 +97,11 @@ const categoryMap: Record<number, string> = {
   99: "Darts",
   100: "ESport",
   6: "European Soccer",
+  101: "EuroCup",
+  102: "Ultimate Diskk",
+  104: "WinterOlympicGames",
   52: "Field Hockey",
+  103: "Basketball Champions",
   58: "UFC",
   57: "NRL",
 };
@@ -125,7 +129,7 @@ export const siteMetadata: ISiteMetadata = {
     {
       name: "类别",
       key: "category",
-      options: Object.entries(categoryMap).map(([value, name]) => ({ name, value })),
+      options: buildCategoryOptionsFromDict(categoryMap),
     },
     {
       name: "种子状态",
@@ -248,6 +252,10 @@ export const siteMetadata: ISiteMetadata = {
             selector: "td.header:contains('Joined on') + td",
             filters: [{ name: "parseTime", args: ["dd/MM/yyyy HH:mm:ss"] }],
           },
+          lastAccessAt: {
+            selector: "td.header:contains('Last access') + td",
+            filters: [{ name: "parseTime", args: ["dd/MM/yyyy HH:mm:ss"] }],
+          },
           // FIXME 暂未实现 uploads
         },
       },
@@ -286,6 +294,7 @@ export const siteMetadata: ISiteMetadata = {
     {
       id: 4,
       name: "VIP",
+      groupType: "vip",
       privilege:
         "Fancy star, No ratio requirements (as long as you are vip) + Access to: Online Users, Tracker info, Live TV, Requests, Top 10, and Users",
     },

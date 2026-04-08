@@ -112,6 +112,8 @@ export const siteMetadata: ISiteMetadata = {
     },
   ],
 
+  officialGroupPattern: [/TJUPT$/],
+
   search: {
     ...SchemaMetadata.search,
     advanceKeywordParams: {
@@ -125,6 +127,7 @@ export const siteMetadata: ISiteMetadata = {
     },
     selectors: {
       ...SchemaMetadata.search!.selectors,
+      rows: { selector: "table.torrents:last > tbody > tr:gt(0):not(:last)" },
       progress: selectorSearchProgress,
       status: selectorSearchStatus,
       tags: [
@@ -140,6 +143,13 @@ export const siteMetadata: ISiteMetadata = {
       ],
     },
   },
+
+  list: [
+    ...SchemaMetadata.list!,
+    {
+      urlPattern: ["/speedup.php"], // additional page
+    },
+  ],
 
   userInfo: {
     ...SchemaMetadata.userInfo,
@@ -236,6 +246,7 @@ export const siteMetadata: ISiteMetadata = {
       uploads: 10,
       hnrUnsatisfied: 0,
       bonus: 300000,
+      isKept: true,
       privilege: "首次升级至此等级时将获得1个永久邀请；查看其它用户的评论、帖子历史；永久保留账号。",
     },
     {
@@ -249,6 +260,7 @@ export const siteMetadata: ISiteMetadata = {
       uploads: 15,
       hnrUnsatisfied: 0,
       bonus: 400000,
+      isKept: true,
       privilege: "首次升级至此等级时将获得1个永久邀请。",
     },
     {
@@ -262,6 +274,7 @@ export const siteMetadata: ISiteMetadata = {
       uploads: 30,
       hnrUnsatisfied: 0,
       bonus: 600000,
+      isKept: true,
       privilege: "首次升级至此等级时将获得2个永久邀请。",
     },
     {
@@ -275,6 +288,7 @@ export const siteMetadata: ISiteMetadata = {
       uploaded: "50000GB",
       hnrUnsatisfied: 0,
       bonus: 1000000,
+      isKept: true,
       privilege: "首次升级至此等级时将获得3个永久邀请。",
     },
     {

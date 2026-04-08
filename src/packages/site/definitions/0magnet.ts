@@ -34,7 +34,7 @@ export const siteMetadata: ISiteMetadata = {
     "uggcf://0pvyv.zl/",
   ],
 
-  formerHosts: ["6mag.net", "9mag.net", "0mag.net"],
+  legacyUrls: ["https://6mag.net/", "https://9mag.net/", "https://0mag.net/"],
 
   search: {
     keywordPath: "params.q",
@@ -48,7 +48,7 @@ export const siteMetadata: ISiteMetadata = {
       return input.requestConfig!;
     },
     selectors: {
-      rows: { selector: "table.file-list > tbody > tr" },
+      rows: { selector: "table.file-list > tbody > tr:has(td)" },
       id: { selector: "a", attr: "href" },
       title: {
         selector: "a",

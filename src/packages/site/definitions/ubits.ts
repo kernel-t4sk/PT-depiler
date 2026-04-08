@@ -9,7 +9,7 @@ export const siteMetadata: ISiteMetadata = {
   version: 1,
   id: "ubits",
   name: "UBits",
-  aka: ["UB"],
+  aka: ["UB", "U堡"],
   description: "原盘爱好者集散地",
   tags: ["影视"],
 
@@ -181,8 +181,34 @@ export const siteMetadata: ISiteMetadata = {
       cross: false,
     },
   ],
+
+  officialGroupPattern: [/@UBits|-UBits|-UBWEB/i],
+
   search: {
     ...SchemaMetadata.search,
+    advanceKeywordParams: {
+      ...SchemaMetadata.search?.advanceKeywordParams!,
+      douban: {
+        requestConfigTransformer: ({ requestConfig: config }) => {
+          set(config!, "params.search_area", 5); // params "&search_area=4"
+          return config!;
+        },
+      },
+    },
+    selectors: {
+      ...SchemaMetadata.search!.selectors,
+      subTitle: {
+        selector: ["td.embedded:first"],
+        elementProcess: (element: HTMLElement) => {
+          const br1 = element.querySelector("br");
+          const nextNode = br1?.nextSibling;
+          if (nextNode && nextNode.nodeType === Node.TEXT_NODE) {
+            return nextNode.textContent?.trim() || "";
+          }
+          return "";
+        },
+      },
+    },
   },
   levelRequirements: [
     {
@@ -242,6 +268,7 @@ export const siteMetadata: ISiteMetadata = {
       id: 6,
       groupType: "user",
       name: "Veteran User",
+      isKept: true,
       privilege: `得到1个邀请名额；可以查看其它用户的评论、帖子历史。Veteran User及以上用户会永远保留账号。`,
       seedingBonus: 750000,
       ratio: 6.0,
@@ -252,6 +279,7 @@ export const siteMetadata: ISiteMetadata = {
       id: 7,
       groupType: "user",
       name: "Extreme User",
+      isKept: true,
       privilege: `得到2个邀请名额；可以更新过期的外部信息；可以查看Extreme User论坛。`,
       seedingBonus: 1500000,
       ratio: 7.0,
@@ -262,6 +290,7 @@ export const siteMetadata: ISiteMetadata = {
       id: 8,
       groupType: "user",
       name: "Ultimate User",
+      isKept: true,
       privilege: `得到3个邀请名额。`,
       seedingBonus: 2000000,
       ratio: 8.0,
@@ -272,6 +301,7 @@ export const siteMetadata: ISiteMetadata = {
       id: 9,
       groupType: "user",
       name: "Nexus Master",
+      isKept: true,
       privilege: `得到4个邀请名额。`,
       seedingBonus: 3000000,
       ratio: 10.0,

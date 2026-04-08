@@ -1,6 +1,8 @@
 import type { ISiteMetadata } from "../types";
 import { get } from "es-toolkit/compat";
-import { GB } from "../utils";
+import { buildCategoryOptionsFromDict } from "../utils";
+import Rartracker from "../schemas/Rartracker";
+import { SchemaMetadata } from "../schemas/Rartracker";
 
 const commonDocumentSelectors = {
   rows: { selector: "torrents-table[torrents] > table > tbody > tr" },
@@ -83,16 +85,18 @@ interface IDigitalCoreBonusLogRespItem {
 type IDigitalCoreBonusLogResp = IDigitalCoreBonusLogRespItem[];
 
 export const siteMetadata: ISiteMetadata = {
+  ...SchemaMetadata,
+
   id: "digitalcore",
   version: 1,
-  name: "DigitalCore.Club",
+  name: "DigitalCore",
   aka: ["DC", "DCC"],
   description: "In a world of sharing, people make the difference.",
   tags: ["综合"],
   timezoneOffset: "+0200",
 
   type: "private",
-  schema: "AbstractPrivateSite",
+  schema: "Rartracker",
 
   urls: ["uggcf://qvtvgnypber.pyho/"],
 
@@ -100,7 +104,7 @@ export const siteMetadata: ISiteMetadata = {
     {
       name: "类别",
       key: "categories",
-      options: Object.entries(categoryMap).map(([value, name]) => ({ name, value })),
+      options: buildCategoryOptionsFromDict(categoryMap),
       cross: { mode: "brackets" },
     },
     {
@@ -114,101 +118,57 @@ export const siteMetadata: ISiteMetadata = {
   ],
 
   search: {
-    keywordPath: "params.searchText",
+    ...SchemaMetadata.search,
     requestConfig: {
-      responseType: "json",
-      url: "/api/v1/torrents",
+      ...SchemaMetadata.search!.requestConfig,
       params: {
+        ...SchemaMetadata.search!.requestConfig!.params,
         dead: true,
         extendedDead: true,
-        extendedSearch: false,
-        index: 0,
-        limit: 100,
         page: "search",
-        section: "all",
-        watchview: false,
         sort: "created",
       },
     },
-    advanceKeywordParams: {
-      imdb: { enabled: true },
-    },
     selectors: {
-      rows: { selector: ":self" },
-      id: { selector: "id" },
-      title: { selector: "name" },
+      ...SchemaMetadata.search!.selectors,
       subTitle: { selector: "tagline" },
-      url: { selector: "id", filters: [(id: number) => `/torrent/${id}/`] },
-      link: { selector: "id", filters: [(id: number) => `/api/v1/torrents/download/${id}`] },
-      time: { selector: "added" },
-      size: { selector: "size" },
-      seeders: { selector: "seeders" },
-      leechers: { selector: "leechers" },
       completed: { selector: "times_completed" },
-      comments: { selector: "comments" },
       category: {
         selector: "category",
         filters: [(catId: number) => categoryMap[catId]],
       },
       tags: [
-        {
-          name: "Free",
-          selector: "frileech",
-          color: "blue",
-        },
-        {
-          name: "Pack",
-          selector: "pack",
-          color: "blue",
-        },
-        {
-          name: "P2P",
-          selector: "p2p",
-          color: "red",
-        },
-        {
-          name: "UNRAR",
-          selector: "unrar",
-          color: "red",
-        },
-        {
-          name: "3D",
-          selector: "3d",
-          color: "red",
-        },
-        {
-          name: "H&R",
-          selector: "locked", // 一个一定会出现的字段，这里用于添加 HR tag
-          color: "red",
-        },
+        { name: "Free", selector: "frileech", color: "blue" },
+        { name: "Pack", selector: "pack", color: "blue" },
+        { name: "P2P", selector: "p2p", color: "red" },
+        { name: "UNRAR", selector: "unrar", color: "red" },
+        { name: "3D", selector: "3d", color: "red" },
+        { name: "H&R", selector: "locked", color: "red" },
       ],
-
       ext_imdb: { selector: "imdbid2" },
     },
   },
 
   list: [
     {
-      urlPattern: [/\/(alltorrents|movies|tvseries|games|music|apps|xxx|other)(\?.*)?$/],
+      urlPattern: [/\/(alltorrents|movies|tvseries|games|music|apps|xxx|other|search)(\?.*)?$/],
       mergeSearchSelectors: false,
       selectors: {
-        link: { selector: "a[href*='/api/v1/torrents/download/']", attr: "href" },
+        time: { selector: "td:nth-child(6)", filters: [{ name: "parseTime" }] },
+        size: { selector: "td:nth-child(7)", filters: [{ name: "parseSize" }] },
+        completed: { selector: "td:nth-child(8)", filters: [{ name: "parseNumber" }] },
+        seeders: { selector: "td:nth-child(9)" },
+        leechers: { selector: "td:nth-child(10)" },
         ...commonDocumentSelectors,
       },
     },
     {
-      // Toplists 匹配，同一个种子可能会在多个分类里出现
       urlPattern: ["/toplists/torrents"],
       mergeSearchSelectors: false,
       selectors: {
-        link: {
-          selector: "a[title]",
-          attr: "href",
-          filters: [
-            { name: "split", args: ["/", 2] },
-            { name: "prepend", args: ["/api/v1/torrents/download/"] },
-          ],
-        },
+        completed: { selector: "td:nth-child(4)", filters: [{ name: "parseNumber" }] },
+        seeders: { selector: "td:nth-child(5)" },
+        leechers: { selector: "td:nth-child(6)" },
         ...commonDocumentSelectors,
       },
     },
@@ -227,37 +187,18 @@ export const siteMetadata: ISiteMetadata = {
     pickLast: ["id", "name", "joinTime"],
     process: [
       {
-        requestConfig: {
-          url: "/api/v1/status",
-          responseType: "json",
-        },
+        ...SchemaMetadata.userInfo!.process![0],
         selectors: {
-          id: { selector: "user.id" },
-          name: { selector: "user.username" },
-          messageCount: { selector: "user.newMessages" },
+          ...SchemaMetadata.userInfo!.process![0].selectors,
           uploads: { selector: "user.mytorrents" },
           seeding: { selector: "user.myseeds" },
-
-          // 最简便的做种体积获取方式，但最多精确到 GiB
-          seedingSize: {
-            selector: "user.currentGbSeed",
-            filters: [(query: number) => query * GB],
-          },
         },
       },
       {
-        requestConfig: {
-          url: "/api/v1/users/$id$",
-          responseType: "json",
-        },
-        assertion: { id: "url" },
+        ...SchemaMetadata.userInfo!.process![1],
         selectors: {
-          joinTime: { selector: "added" },
-          downloaded: { selector: "downloaded" },
-          trueDownloaded: { selector: "downloaded_real" },
-          uploaded: { selector: "uploaded" },
+          ...SchemaMetadata.userInfo!.process![1].selectors,
           trueUploaded: { selector: "uploaded_real" },
-          bonus: { selector: "bonuspoang" },
           levelId: { selector: "class" },
           levelName: {
             selector: "class",
@@ -293,13 +234,10 @@ export const siteMetadata: ISiteMetadata = {
   },
 
   levelRequirements: [
-    {
-      id: 0,
-      name: levelIdMap[0], // Rogue
-    },
+    { id: 0, name: levelIdMap[0] },
     {
       id: 10,
-      name: levelIdMap[10], // Sentinel
+      name: levelIdMap[10],
       interval: "P14D",
       uploaded: "50GB",
       ratio: 1.05,
@@ -307,7 +245,7 @@ export const siteMetadata: ISiteMetadata = {
     },
     {
       id: 20,
-      name: levelIdMap[20], // Viceroy
+      name: levelIdMap[20],
       interval: "P105D",
       uploaded: "300GB",
       ratio: 1.1,
@@ -315,7 +253,7 @@ export const siteMetadata: ISiteMetadata = {
     },
     {
       id: 30,
-      name: levelIdMap[30], // Sentry
+      name: levelIdMap[30],
       interval: "P210D",
       uploaded: "1200GB",
       ratio: 1.1,
@@ -323,7 +261,7 @@ export const siteMetadata: ISiteMetadata = {
     },
     {
       id: 31,
-      name: levelIdMap[31], // Guardian
+      name: levelIdMap[31],
       interval: "P500D",
       uploaded: "5TB",
       ratio: 20,
@@ -331,15 +269,15 @@ export const siteMetadata: ISiteMetadata = {
     },
     {
       id: 32,
-      name: levelIdMap[32], // Vanguard
+      name: levelIdMap[32],
       interval: "P730D",
       uploaded: "20TB",
       ratio: 20,
       privilege: "Get 10 more extra invites and 10 additional request slots. Can upload unmoderated torrents.",
     },
-    {
-      id: 70,
-      name: levelIdMap[70], // VIP
-    },
+    { id: 70, name: levelIdMap[70], groupType: "vip" },
   ],
 };
+
+// DigitalCore 不需要额外的类方法，passkey/download 逻辑已在 Rartracker 基类中实现
+export default class DigitalCore extends Rartracker {}

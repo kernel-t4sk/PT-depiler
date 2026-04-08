@@ -11,7 +11,7 @@ import {
   NeedLoginError,
 } from "../types";
 import PrivateSite from "../schemas/AbstractPrivateSite";
-import { buildCategoryOptions, parseSizeString } from "../utils";
+import { buildCategoryOptionsFromList, parseSizeString } from "../utils";
 import { parseValidTimeString } from "../utils/datetime.ts";
 
 export const siteMetadata: ISiteMetadata = {
@@ -30,7 +30,7 @@ export const siteMetadata: ISiteMetadata = {
     {
       name: "类别",
       key: "pcat",
-      options: buildCategoryOptions(["Show All", "48G", "Games", "Stardust", "Other"]),
+      options: buildCategoryOptionsFromList(["Show All", "48G", "Games", "Stardust", "Other"]),
     },
     {
       name: "规格",
@@ -356,6 +356,15 @@ export default class AidoruOnline extends PrivateSite {
       },
       true,
     );
+    // 获取所有包含href属性的元素
+    const allHrefElements = indexDocument.querySelectorAll("[href]");
+    const allHrefs = Array.from(allHrefElements).map((el) => el.getAttribute("href"));
+    // 检查是否有包含login的href
+    const hasLoginHref = allHrefs.some((href) => href && href.toLowerCase().includes("action=login"));
+    if (hasLoginHref) {
+      throw new NeedLoginError("检测到包含action=login的链接，需要重新登录");
+    }
+
     return this.getFieldData(indexDocument, this.metadata.userInfo?.selectors?.id!);
   }
 
@@ -366,6 +375,10 @@ export default class AidoruOnline extends PrivateSite {
       url: "/account.php",
       responseType: "document",
     });
+
+    if (!userDetailDocument || !userDetailDocument.title) {
+      throw new NeedLoginError("请求未获取到数据，需要重新登录");
+    }
 
     return this.getFieldsData(
       userDetailDocument,

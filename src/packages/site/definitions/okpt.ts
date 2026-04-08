@@ -227,6 +227,8 @@ export const siteMetadata: ISiteMetadata = {
     CategoryInclbookmarked,
   ],
 
+  officialGroupPattern: [/OK(WEB|Web)?$/i],
+
   searchEntry: {
     area_torrents: { name: "综合影音", requestConfig: { url: "/torrents.php" } },
     area_special: { name: "音乐写真", requestConfig: { url: "/special.php" } },
@@ -298,6 +300,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "2TB",
       ratio: 4.5,
       seedingBonus: 600000,
+      isKept: true,
       privilege: "可以更新过期的外部信息。拥有与VeteranUser一样的权限六级烧伤(Extreme User)及以上用户会永远保留账号。",
     },
     {
@@ -308,6 +311,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "5TB",
       ratio: 5.0,
       seedingBonus: 800000,
+      isKept: true,
       privilege: "这个等级会永远保留账号。拥有与ExtremeUser一样的权限",
     },
     {
@@ -318,6 +322,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "10TB",
       ratio: 5.5,
       seedingBonus: 1000000,
+      isKept: true,
       privilege: "这个等级会永远保留账号。拥有与UltimateUser一样的权限",
     },
   ],

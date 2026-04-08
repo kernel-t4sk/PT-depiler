@@ -22,7 +22,7 @@ export const siteMetadata: ISiteMetadata = {
   schema: "NexusPHP",
 
   urls: ["uggcf://uqnern.pyho/"],
-  formerHosts: ["www.hdarea.co"],
+  legacyUrls: ["https://www.hdarea.co/"],
 
   category: [
     {
@@ -125,6 +125,18 @@ export const siteMetadata: ISiteMetadata = {
 
   search: {
     ...SchemaMetadata.search!,
+    requestConfig: {
+      ...SchemaMetadata.search!.requestConfig,
+      params: {
+        ...SchemaMetadata.search!.requestConfig!.params,
+        search_area: 0,
+        search_mode: 0,
+      },
+    },
+    advanceKeywordParams: {
+      imdb: {},
+      douban: {},
+    },
     selectors: {
       ...SchemaMetadata.search!.selectors!,
       rows: {
@@ -135,6 +147,20 @@ export const siteMetadata: ISiteMetadata = {
         { name: "首发", selector: "img.first_publish", color: "#3887D7" },
         { name: "禁转", selector: "img.transfer_forbidden", color: "#5E14DA" },
       ],
+    },
+  },
+
+  detail: {
+    ...SchemaMetadata.detail,
+    selectors: {
+      ...SchemaMetadata.detail!.selectors,
+      link: {
+        selector: `td:contains("下载链接") + td`,
+        elementProcess: (element: HTMLElement) => {
+          const textNode = element?.childNodes[0];
+          return textNode?.textContent?.trim() ?? "";
+        },
+      },
     },
   },
 
@@ -176,6 +202,7 @@ export const siteMetadata: ISiteMetadata = {
       interval: "P20W",
       downloaded: "1024GB",
       ratio: 4.5,
+      isKept: true,
       privilege: "可以查看其它用户的评论、帖子历史。Veteran User及以上用户会永远保留账号。",
     },
     {
@@ -184,6 +211,7 @@ export const siteMetadata: ISiteMetadata = {
       interval: "P25W",
       downloaded: "2TB",
       ratio: 5.0,
+      isKept: true,
       privilege: "可以更新过期的外部信息；可以查看Extreme User论坛。",
     },
     {
@@ -192,9 +220,18 @@ export const siteMetadata: ISiteMetadata = {
       interval: "P30W",
       downloaded: "5TB",
       ratio: 5.5,
+      isKept: true,
       privilege: "得到1个邀请名额。",
     },
-    { id: 8, name: "Nexus Master", interval: "P40W", downloaded: "10TB", ratio: 6.0, privilege: "得到2个邀请名额。" },
+    {
+      id: 8,
+      name: "Nexus Master",
+      interval: "P40W",
+      downloaded: "10TB",
+      ratio: 6.0,
+      isKept: true,
+      privilege: "得到2个邀请名额。",
+    },
   ],
 };
 

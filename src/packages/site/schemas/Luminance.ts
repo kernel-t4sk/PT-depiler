@@ -1,13 +1,6 @@
-import { omit, toMerged } from "es-toolkit";
-import {
-  ETorrentStatus,
-  EResultParseStatus,
-  type ISiteMetadata,
-  type IUserInfo,
-  type ITorrent,
-  NeedLoginError,
-} from "../types";
-import PrivateSite from "../schemas/AbstractPrivateSite";
+import { toMerged } from "es-toolkit";
+import { ETorrentStatus, type ISiteMetadata, type IUserInfo, type ITorrent, type ISearchInput } from "../types";
+import { GazelleBase } from "./Gazelle";
 import { parseSizeString, definedFilters } from "../utils";
 import Sizzle from "sizzle";
 
@@ -23,7 +16,7 @@ export const SchemaMetadata: Partial<ISiteMetadata> = {
     },
     keywordPath: "params.title",
     selectors: {
-      rows: { selector: "tr.torrent" },
+      rows: { selector: "table#torrent_table:last tr:gt(0)" },
       id: {
         selector: ["a[href*='torrents.php?id=']"],
         attr: "href",
@@ -48,13 +41,7 @@ export const SchemaMetadata: Partial<ISiteMetadata> = {
       },
       url: { selector: ["a[href*='torrents.php?id=']"], attr: "href" },
       link: { selector: ["a[href*='torrents.php?action=download']"], attr: "href" },
-      time: { selector: ["td:nth-child(5) > span"], attr: "title", filters: [{ name: "parseTime" }] },
-      size: { selector: ["td:nth-child(6)"], filters: [{ name: "parseSize" }] },
-      author: { selector: ["td:nth-child(10) > a"] },
-      seeders: { selector: ["td:nth-child(8)"], filters: [{ name: "parseNumber" }] },
-      leechers: { selector: ["td:nth-child(9)"], filters: [{ name: "parseNumber" }] },
-      completed: { selector: ["td:nth-child(7)"], filters: [{ name: "parseNumber" }] },
-      comments: { selector: ["td:nth-child(4)"], filters: [{ name: "parseNumber" }] },
+      time: { selector: ["span.time[title]"], attr: "title", filters: [{ name: "parseTime" }] },
       // category: {},
       status: {
         selector: ["a[href*='torrents.php?action=download'] span"],
@@ -75,12 +62,13 @@ export const SchemaMetadata: Partial<ISiteMetadata> = {
       tags: [
         {
           name: "Free",
-          selector: "img[src*='freedownload.gif']",
+          selector:
+            "span.icon[title*='Freeleech'], img[alt='Freeleech'], img[src*='freedownload.gif'], i.unlimited_leech",
           color: "blue",
         },
         {
           name: "2xUp",
-          selector: "img[src*='doubleseed.gif']",
+          selector: "span.icon[title*='DoubleSeed'], img[alt='DoubleSeed'], img[src*='doubleseed.gif']",
           color: "lime",
         },
       ],
@@ -89,42 +77,76 @@ export const SchemaMetadata: Partial<ISiteMetadata> = {
 
   userInfo: {
     pickLast: ["id"],
+    process: [
+      {
+        requestConfig: { url: "/", responseType: "document" },
+        fields: ["id"],
+      },
+      {
+        requestConfig: {
+          url: "/user.php",
+          params: {
+            /* id: flushUserInfo.id */
+          },
+          responseType: "document",
+        },
+        assertion: { id: "params.id" },
+        fields: [
+          "name",
+          "joinTime",
+          "lastAccessAt",
+          "uploaded",
+          "downloaded",
+          "levelName",
+          "bonus",
+          "ratio",
+          "uploads",
+          "bonusPerHour",
+          "seeding",
+          "seedingSize",
+          "messageCount",
+          "posts",
+        ],
+      },
+    ],
     selectors: {
       // "/user.php?id="
-      name: { selector: ["a.username"] },
       id: {
         selector: ["a.username"],
         attr: "href",
         filters: [{ name: "querystring", args: ["id"] }],
       },
+      name: { selector: ["a.username"] },
       joinTime: {
-        selector: ["li:contains('Joined:') > span.time"],
+        selector: ["ul.stats > li:contains('Joined:') > span.time"],
+        attr: "title",
+        filters: [{ name: "parseTime" }],
+      },
+      lastAccessAt: {
+        selector: ["ul.stats > li:contains('Last Seen:') > span"],
         attr: "title",
         filters: [{ name: "parseTime" }],
       },
       uploaded: {
-        selector: ["div:contains('Stats') + div.box > ul.stats > li:contains('Uploaded:')"],
+        selector: ["ul.stats > li:contains('Uploaded:')"],
         filters: [(query: string) => parseSizeString(query.split(":")[1].trim().replace(/,/g, "") || "0")],
       },
       downloaded: {
-        selector: ["div:contains('Stats') + div.box > ul.stats > li:contains('Downloaded:')"],
+        selector: ["ul.stats > li:contains('Downloaded:')"],
         filters: [(query: string) => parseSizeString(query.split(":")[1].trim().replace(/,/g, "") || "0")],
       },
       levelName: {
-        selector: ["span.rank", "div:contains('Personal') + div.box > ul.stats > li:contains('Class:')"],
+        selector: ["span.rank", "ul.stats > li:contains('Class:')"],
         switchFilters: {
-          "div:contains('Personal') + div.box > ul.stats > li:contains('Class:')": [
-            { name: "trim" },
-            { name: "split", args: [":", 1] },
-          ],
+          "ul.stats > li:contains('Class:')": [{ name: "split", args: [":", 1] }],
         },
       },
       bonus: {
-        selector: ["div[id='bonusdiv'] > h4"],
+        selector: ["div[id='bonusdiv'] > h4", "h4:contains('Credits:')"],
         filters: [(query: string) => parseFloat(query.split(":")[1].trim().replace(/,/g, "") || "0")],
       },
       ratio: {
-        selector: ["div:contains('Stats') + div.box > ul.stats > li:contains('Ratio:') > span"],
+        selector: ["ul.stats > li:contains('Ratio:') > span"],
         filters: [
           (query: string) => {
             if (query === "∞") return -1; // Infinity 不能通过 sendMessage 传递，会导致无返回，使用 -1 替代，前端会自动处理的
@@ -134,68 +156,40 @@ export const SchemaMetadata: Partial<ISiteMetadata> = {
         ],
       },
       uploads: {
-        selector: ["div:contains('Community') + div.box > ul.stats > li:contains('Uploaded')"],
-        filters: [{ name: "parseNumber" }],
+        selector: ["ul.stats > li[title]:contains('Uploaded:')"],
+        filters: [{ name: "split", args: ["[", 0] }, { name: "parseNumber" }],
       },
       bonusPerHour: {
         // 没找到显示的地方，通过log计算出来
         selector: ["div[id='bonuslog']"],
-        elementProcess: (element: any) => {
+        elementProcess: (element: HTMLElement) => {
           if (!element) return 0;
 
-          const firstLine = element.innerHTML.split("<br/>")[0].trim();
+          const firstLine = element.innerHTML.split("<br/>").find((log) => log.includes("hrs"));
           const creditsMatch = firstLine?.match(/\|\s*[+-]?([\d.,]+)\s*credits\s*\|/);
-          const credits = parseFloat(creditsMatch?.[1].replace(/,/g, "") || "0");
+          const credits = creditsMatch ? parseFloat(creditsMatch?.[1].replace(/,/g, "")) : 0;
           return credits / 24;
         },
       },
       seeding: {
-        selector: [
-          "a[id='nav_seeding'] span[id='nav_seeding_r']",
-          "div:contains('Community') + div.box > ul.stats > li:contains('Seeding')",
-        ],
+        selector: ["a[id='nav_seeding'] span[id='nav_seeding_r']", "ul.stats > li:contains('Seeding:')"],
         switchFilters: {
           "a[id='nav_seeding'] span[id='nav_seeding_r']": [
             (query: string) => parseInt(query.trim().replace(/,/g, "") || "0"),
           ],
-          "div:contains('Community') + div.box > ul.stats > li:contains('Seeding')": [
-            { name: "split", args: ["(", 0] },
-            { name: "parseNumber" },
-          ],
+          "ul.stats > li:contains('Seeding:')": [{ name: "split", args: ["(", 0] }, { name: "parseNumber" }],
         },
       },
+      seedingSize: { selector: "ul.stats > li:contains('Seeding Size:')", filters: [{ name: "parseSize" }] },
       messageCount: {
-        selector: [
-          "a[href*='messages.php']",
-          "a[href*='inbox.php']",
-          "a[href*='pm.php']",
-          ".new-message",
-          ".message-notification",
-          "span:contains('new messages')",
-          "span:contains('new message')",
-          "div:contains('You have')",
-        ],
-        filters: [
-          (query: string) => {
-            if (!query?.trim()) return 0;
-            try {
-              // 匹配 "You have 3 new messages" 格式
-              const newMessagesMatch = query.match(/You have (\d+) new messages?/i);
-              if (newMessagesMatch) return parseInt(newMessagesMatch[1], 10) || 0;
-
-              // 匹配 "3 new messages" 格式
-              const messagesMatch = query.match(/(\d+) new messages?/i);
-              if (messagesMatch) return parseInt(messagesMatch[1], 10) || 0;
-
-              // 匹配纯数字
-              const num = parseInt(query.match(/\d+/)?.[0] || "0", 10);
-              return isNaN(num) ? 0 : num;
-            } catch {
-              return 0;
-            }
-          },
-        ],
+        selector: ":self",
+        elementProcess: (doc: Document) => {
+          // https://github.com/Empornium/Luminance/blob/23b568c157a58f36305cf447a3617bf2e4a2ca2e/application/Templates/snippets/header_bottom.html.twig#L93
+          const messageEls = Sizzle("a[onmousedown*='inbox'], a[onmousedown*='staffpm']", doc);
+          return messageEls.reduce((sum, el) => sum + definedFilters.parseNumber(el.textContent), 0);
+        },
       },
+      posts: { selector: "ul.stats > li:contains('Forum Posts:')", filters: [{ name: "parseNumber" }] },
     },
   },
 
@@ -208,7 +202,7 @@ export const SchemaMetadata: Partial<ISiteMetadata> = {
   detail: {
     urlPattern: ["/torrents\\.php\\?id=\\d+"],
     selectors: {
-      title: { selector: ["table.torrent_table tr[id] strong"] },
+      title: { selector: ["#content > .details > h2", "table.torrent_table tr[id] strong"] },
       id: {
         selector: ["a[href*='/torrents.php?action=download']"],
         attr: "href",
@@ -222,159 +216,89 @@ export const SchemaMetadata: Partial<ISiteMetadata> = {
   },
 };
 
-export default class Luminance extends PrivateSite {
-  public override async getUserInfoResult(lastUserInfo: Partial<IUserInfo> = {}): Promise<IUserInfo> {
-    let flushUserInfo: IUserInfo = {
-      status: EResultParseStatus.unknownError,
-      updateAt: +new Date(),
-      site: this.metadata.id,
-    };
+export default class Luminance extends GazelleBase {
+  protected guessSearchFieldIndexConfig(): Record<string, string[]> {
+    return {
+      size: ["td:has(a[href*='order_by=size'])", "td:contains('Size')"], // 大小
+      seeders: ["td:has(a[href*='order_by=seeders'])"], // 种子数
+      leechers: ["td:has(a[href*='order_by=leechers'])"], // 下载数
+      completed: ["td:has(a[href*='order_by=snatched'])"], // 完成数
+      comments: ["td:contains('Comm')", "td:has(i.fa-comment)"], // 评论数
+      author: ["td:contains('Uploader')"], // 上传者
+    } as Record<keyof ITorrent, string[]>;
+  }
 
-    if (!this.allowQueryUserInfo) {
-      flushUserInfo.status = EResultParseStatus.passParse;
-      return flushUserInfo;
-    }
+  public override async transformSearchPage(
+    doc: Document | object | any,
+    searchConfig: ISearchInput,
+  ): Promise<ITorrent[]> {
+    const { keywords, searchEntry, requestConfig } = searchConfig;
 
-    // 如果定义了 process，则按照 AbstractPrivateSite 的方式处理
-    if (Array.isArray(this.metadata.userInfo?.process)) {
-      return await super.getUserInfoResult(lastUserInfo);
-    }
+    // 返回是 Document 的情况才自动生成选择器
+    if (doc instanceof Document) {
+      // 如果配置文件没有传入 search 的选择器，则我们自己生成
+      const legacyTableSelector = "table#torrent_table:last";
 
-    // 否则直接使用 Luminance 的方式获取用户信息
-    try {
-      let id: number;
-      if (lastUserInfo !== null && lastUserInfo.id) {
-        id = lastUserInfo.id as number;
-      } else {
-        // 如果没有 id 信息，则访问一次 主页
-        id = await this.getUserIdFromSite();
+      // 生成 rows的
+      if (!searchEntry!.selectors?.rows) {
+        searchEntry!.selectors!.rows = {
+          selector: `${legacyTableSelector} tr:gt(0)`,
+        };
       }
-      flushUserInfo.id = id;
 
-      const { data: userDetailDocument } = await this.request<Document>({
-        url: `/user.php?id=${id}`,
-        responseType: "document",
-      });
-
-      // 导入基本 Details 页面获取到的用户信息
-      flushUserInfo = toMerged(flushUserInfo, await this.getUserInfoFromDetailsPage(userDetailDocument));
-
-      if (flushUserInfo.seeding) {
-        // 对有 Seeding Size 行的站点直接解析对应元素
-        const seedingList = Sizzle("ul.stats.nobullet > li:contains('Seeding Size:')", userDetailDocument);
-        if (seedingList.length > 0) {
-          flushUserInfo.seedingSize = definedFilters.parseSize(seedingList[0].textContent);
-        } else {
-          // 否则则尝试解析做种列表计算获取
-          flushUserInfo.seedingSize = await this.getUserSeedingSize(id, flushUserInfo.seeding);
+      // 对于 Luminance，一般来说，表的第一行应该是标题行，即 ` > tr:nth-child(1)`
+      const headSelector = `${legacyTableSelector} tr:first > td`;
+      const headAnother = Sizzle(headSelector, doc) as HTMLElement[];
+      headAnother.forEach((element, elementIndex) => {
+        // 比较好处理的一些元素，都是可以直接获取的
+        let updateSelectorField;
+        for (const [dectField, dectSelector] of Object.entries(this.guessSearchFieldIndexConfig())) {
+          for (const dectFieldElement of dectSelector) {
+            if (Sizzle.matchesSelector(element, dectFieldElement)) {
+              updateSelectorField = dectField;
+              break;
+            }
+          }
         }
-      }
 
-      // 如果前面没有获取到用户等级的id，则尝试通过定义的 levelRequirements 来获取
-      if (this.metadata.levelRequirements && flushUserInfo.levelName && typeof flushUserInfo.levelId === "undefined") {
-        flushUserInfo.levelId = this.guessUserLevelId(flushUserInfo as IUserInfo);
-      }
-
-      flushUserInfo.status = EResultParseStatus.success;
-    } catch (e) {
-      flushUserInfo.status = EResultParseStatus.parseError;
-
-      if (e instanceof NeedLoginError) {
-        flushUserInfo.status = EResultParseStatus.needLogin;
-      }
-    }
-
-    return flushUserInfo;
-  }
-
-  protected async getUserIdFromSite(): Promise<number> {
-    await this.sleepAction(this.metadata.userInfo?.requestDelay);
-
-    const { data: indexDocument } = await this.request<Document>(
-      {
-        url: "/",
-        responseType: "document",
-      },
-      true,
-    );
-    return this.getFieldData(indexDocument, this.metadata.userInfo?.selectors?.id!);
-  }
-
-  protected async getUserInfoFromDetailsPage(userDetailDocument: Document): Promise<Partial<IUserInfo>> {
-    await this.sleepAction(this.metadata.userInfo?.requestDelay);
-
-    return this.getFieldsData(
-      userDetailDocument,
-      this.metadata.userInfo?.selectors!,
-      Object.keys(omit(this.metadata.userInfo?.selectors!, ["id"])),
-    ) as Partial<IUserInfo>;
-  }
-
-  protected async getUserSeedingSize(id: number, seedingNum: number): Promise<number> {
-    await this.sleepAction(this.metadata.userInfo?.requestDelay);
-
-    const { data: userSettingDocument } = await this.request<Document>({
-      url: "/user.php",
-      params: {
-        action: "edit",
-        userid: id,
-      },
-      responseType: "document",
-    });
-
-    const selectedOption = Sizzle("select[id='torrentsperpage'] > option[selected]", userSettingDocument)[0];
-    const torPerPageRaw = selectedOption?.getAttribute("value");
-    const torPerPage = Number(torPerPageRaw);
-    if (!Number.isFinite(torPerPage) || torPerPage <= 0) return 0;
-
-    const pageNum = Math.ceil(seedingNum / torPerPage);
-    let seedingSize = 0;
-    let sizeIndex = 0;
-
-    for (let i = 0; i < pageNum; i++) {
-      await this.sleepAction(this.metadata.userInfo?.requestDelay);
-
-      const { data: seedingPageDocument } = await this.request<Document>({
-        url: "/torrents.php",
-        params: {
-          type: "seeding",
-          page: i + 1,
-          userid: id,
-        },
-        responseType: "document",
-      });
-
-      if (sizeIndex === 0) {
-        const targetTd = Sizzle("tr.colhead > td > a:contains('Size')", seedingPageDocument)[0]?.parentNode;
-        if (targetTd && targetTd.parentNode) {
-          const allTds = Array.from(targetTd.parentNode.children);
-          sizeIndex = allTds.indexOf(targetTd as Element);
-        } else {
-          return seedingSize;
+        if (updateSelectorField) {
+          // @ts-ignore
+          searchEntry.selectors[updateSelectorField] = toMerged(
+            {
+              selector: [`> td:eq(${elementIndex})`],
+            },
+            // @ts-ignore
+            searchEntry.selectors[updateSelectorField] || {},
+          );
         }
-      }
-
-      const trs = seedingPageDocument.querySelectorAll("tr.torrent");
-      for (const tr of trs) {
-        const sizeTd = tr.querySelector(`td:nth-child(${sizeIndex + 1})`);
-        const sizeText = sizeTd?.textContent?.trim() || "";
-        seedingSize += parseSizeString(sizeText.replace(/,/g, ""));
-      }
+      });
     }
 
-    return seedingSize;
+    // !!! 其他一些比较难处理的，我们把他 hack 到 parseWholeTorrentFromRow 中 !!!
+    return await super.transformSearchPage(doc, { keywords, searchEntry, requestConfig });
   }
 
   public override async getTorrentDownloadLink(torrent: ITorrent): Promise<string> {
-    const downloadLink = await super.getTorrentDownloadLink(torrent);
-    if (downloadLink && !downloadLink.includes("action=download")) {
-      const { data: detailDocument } = await this.request<Document>({
-        url: downloadLink,
-        responseType: "document",
-      });
-      return this.getFieldData(detailDocument, this.metadata.search?.selectors?.link!);
+    // 种子链接格式是 torrent.php?id=123
+    return this.getTorrentDownloadLinkFactory("id")(torrent);
+  }
+
+  protected async parseUserInfoForSeedingSize(
+    flushUserInfo: Partial<IUserInfo>,
+    dataDocument: Document,
+  ): Promise<Partial<IUserInfo>> {
+    // 对有 Seeding Size 行的站点直接解析对应元素
+    let seedingSize =
+      this.metadata.userInfo?.selectors?.seedingSize &&
+      this.getFieldData(dataDocument, this.metadata.userInfo.selectors.seedingSize); // 在 elementQuery 内进行大小解析
+
+    flushUserInfo.seedingSize = seedingSize;
+
+    if (!seedingSize) {
+      // 否则则尝试解析做种列表计算获取
+      flushUserInfo = toMerged(flushUserInfo, await this.getSeedingSize(flushUserInfo.id as number));
     }
 
-    return downloadLink;
+    return flushUserInfo;
   }
 }

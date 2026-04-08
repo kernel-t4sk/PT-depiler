@@ -17,7 +17,7 @@ const levelMap: Record<string, string> = {
 };
 
 export const siteMetadata: ISiteMetadata = {
-  version: 1,
+  version: 2,
   id: "starspace",
   name: "星空",
   aka: ["StarSpace", "影"],
@@ -29,7 +29,7 @@ export const siteMetadata: ISiteMetadata = {
   schema: "AbstractPrivateSite",
 
   urls: ["uggcf://fgne-fcnpr.arg/"],
-  formerHosts: ["shadowflow.org"],
+  legacyUrls: ["https://shadowflow.org/"],
 
   collaborator: ["yiyule", "milangree", "hui-shao", "Rhilip"],
 
@@ -43,6 +43,8 @@ export const siteMetadata: ISiteMetadata = {
       ],
     },
   ],
+
+  officialGroupPattern: [/Ying(WEB|DIY|TV|MV|MUSIC)?$/i],
 
   search: {
     keywordPath: "params.search",
@@ -177,6 +179,14 @@ export const siteMetadata: ISiteMetadata = {
             selector: "a[href*='torrent_user.php?pop=8']:first",
             filters: [{ name: "parseNumber" }],
           },
+          lastAccessAt: {
+            selector: [
+              "td.nowrap:contains('最近访问') + td",
+              "td.nowrap:contains('最近訪問') + td",
+              "td.nowrap:contains('Last Access') + td",
+            ],
+            filters: [{ name: "split", args: ["(", 0] }, { name: "parseTime" }],
+          },
         },
       },
       {
@@ -242,48 +252,56 @@ export const siteMetadata: ISiteMetadata = {
       id: 4,
       name: "Crazy User",
       nameAka: ["着迷"],
+      isKept: true,
       privilege: "此等级及以上用户不会因为长期不登录被禁用",
     },
     {
       id: 5,
       name: "Insane User",
       nameAka: ["狂热"],
+      isKept: true,
       privilege: "无",
     },
     {
       id: 6,
       name: "Veteran User",
       nameAka: ["资深"],
+      isKept: true,
       privilege: "无",
     },
     {
       id: 7,
       name: "Extreme User",
       nameAka: ["大师"],
+      isKept: true,
       privilege: "无",
     },
     {
       id: 8,
       name: "Ultimate User",
       nameAka: ["宗师"],
+      isKept: true,
       privilege: "无",
     },
     {
       id: 9,
       name: "Master User",
       nameAka: ["满级"],
+      isKept: true,
       privilege: "无",
     },
     {
       id: 10,
       name: "Star User",
       nameAka: ["星级"],
+      isKept: true,
       privilege: "无",
     },
     {
       id: 11,
       name: "God User",
       nameAka: ["神级"],
+      isKept: true,
       privilege: "无",
     },
   ],

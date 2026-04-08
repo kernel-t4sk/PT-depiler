@@ -4,6 +4,8 @@ import type { IFetchSocialSiteInformationConfig } from "@ptd/social";
 import type { TLangCode } from "@/options/plugins/i18n.ts";
 import type { ITimelineUserInfoField } from "@/options/views/Overview/MyData/UserDataTimeline/utils.ts";
 
+import type { TLocalDownloadMethod } from "../common/download.ts";
+
 export const supportTheme = ["auto", "light", "dark"] as const;
 export type supportThemeType = (typeof supportTheme)[number];
 type UiTableBehaviorKey = "SetSite" | "SearchEntity" | "MyData" | "DownloadHistory" | string;
@@ -12,14 +14,6 @@ interface UiTableBehaviorItem<T = string> {
   columns?: T[];
   sortBy?: { key: T; order: "asc" | "desc" }[];
 }
-
-export const LocalDownloadMethod = [
-  "web", // 和PTPP一样打开对应种子下载的链接页面，然后由浏览器自动拉起下载过程，只有 method='get' 的种子才能支持，其他情况会回落到 extension
-  "browser", // （默认）由插件直接调用 chrome.downloads.download() 方法，支持 post, data, headers 参数（够用了），此时 filename 由浏览器自动猜测
-  "extension", // （回落）插件调用 axios.requests() 方法，获取并解析种子，生成 Blob 后交由 chrome.downloads.download ，此时 filename 由插件直接控制，可能会出现错误，同时支持 axios 的高级参数
-] as const;
-
-export type TLocalDownloadMethod = (typeof LocalDownloadMethod)[number];
 
 export interface IConfigPiniaStorageSchema {
   version: string; // 插件版本，格式为 v0.0.5.1147+23f758f7 ，如果为空则表示第一次安装
@@ -42,6 +36,7 @@ export interface IConfigPiniaStorageSchema {
   contextMenus: {
     enabled: boolean; // 是否启用右键菜单
     allowSelectionTextSearch: boolean; // 是否启用选择内容时搜索
+    allowSocialLinkSearch: boolean; // 是否启用社交链接（ douban, imdb ）搜索
     allowLinkDownloadPush: boolean; // 是否允许链接推送
   };
 
@@ -55,6 +50,7 @@ export interface IConfigPiniaStorageSchema {
     applyTheme: boolean; // 是否响应主题样式
     defaultOpenSpeedDial: boolean; // 是否默认打开按钮
     stackedButtons: boolean; // 是否使用堆叠按钮
+    fadeEnterStyle: boolean; // 是否启用淡入效果（即默认半透明，当鼠标移入时不透明）
 
     doubleConfirmAction: boolean; // 进行批量操作时，是否需要二步确认（避免误操作）
     dragLinkOnSpeedDial: boolean; // 是否允许拖拽链接到 SpeedDial 上
@@ -159,6 +155,8 @@ export interface IConfigPiniaStorageSchema {
     socialInformationSearchOnNewTab: boolean;
     // 是否使用 time_alive(过去时间) 来展示，如果不使用，则使用 time_added(发生时间) 来展示，默认不使用
     uploadAtFormatAsAlive: boolean;
+    // 是否限制种子标题列的最大宽度，防止过长导致表格布局混乱
+    limitTorrentTitleTdWidth: boolean;
   };
 
   userInfo: {
@@ -184,27 +182,39 @@ export interface IConfigPiniaStorageSchema {
   download: {
     // 是否保存下载记录
     saveDownloadHistory: boolean;
-    // 是否保存上一次使用的下载器
-    saveLastDownloader: boolean;
-    // 是否允许直接将链接（而不是种子文件）发送到客户端
-    allowDirectSendToClient: boolean;
+
+    // 在下载器页面，进入时自动获取下载器状态（如果下载器支持获取状态的话）
+    startupAutoFetchDownloaderStatus: boolean;
+
     // 当使用本地方法下载时，如何下载种子
     localDownloadMethod: TLocalDownloadMethod;
     // 当使用本地方法下载时，是否忽略站点的下载间隔设置；
     ignoreSiteDownloadIntervalWhenLocalDownload: boolean;
+
+    // 是否保存上一次使用的下载器
+    saveLastDownloader: boolean;
+    // 是否允许直接将链接（而不是种子文件）发送到客户端
+    allowDirectSendToClient: boolean;
     // 是否使用快速发送到客户端功能（展平 下载器和下载目录 ）
     useQuickSendToClient: boolean;
   };
 
   searchEntity: {
-    // 是否保存上一次使用的筛选词
-    saveLastFilter: boolean;
     // 搜索时的最大并发数
     queueConcurrency: number;
-    // 是否将 tt\d{7,8} 的搜索词视为 IMDb 搜索
-    treatTTQueryAsImdbSearch: boolean;
+
     // 是否允许单站点搜索
     allowSingleSiteSearch: boolean;
+    // 是否将 tt\d{7,8} 的搜索词视为 IMDb 搜索
+    treatTTQueryAsImdbSearch: boolean;
+
+    // 是否保存上一次使用的筛选词
+    saveLastFilter: boolean;
+    // 当搜索词为 imdb 时，且站点搜索结果返回 imdbId 时，滤去 imdb 不匹配的结果
+    forceImdbIdMatchFilter: boolean;
+
+    autoDetectOfficialGroupFromTitle: boolean;
+
     // 是否启用快速站点过滤功能
     quickSiteFilter: boolean;
   };

@@ -27,6 +27,12 @@ export const setBaseChildren: RouteRecordRaw[] = [
     component: () => import("../views/Settings/SetBase/UserInfoWindow.vue"),
   },
   {
+    path: "native-bridge",
+    name: "SetBaseNativeBridge",
+    meta: { icon: "mdi-connection", usesGlobalSave: false },
+    component: () => import("../views/Settings/SetBase/NativeBridgeWindow.vue"),
+  },
+  {
     path: "backup",
     name: "SetBaseBackup",
     meta: { icon: "mdi-backup-restore" },
@@ -77,11 +83,18 @@ export const routes: RouteRecordRaw[] = [
         meta: { icon: "mdi-history" },
         component: () => import("../views/Overview/DownloadHistory/Index.vue"),
       },
+      {
+        path: "/keep-upload-task",
+        name: "KeepUploadTask",
+        meta: { icon: "mdi-merge" },
+        component: () => import("../views/Overview/KeepUploadTask/Index.vue"),
+      },
     ],
   },
   {
     path: "/settings",
     name: "Settings",
+    redirect: "/set-base",
     meta: { isMainMenu: true },
     children: [
       {

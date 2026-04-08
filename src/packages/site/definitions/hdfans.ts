@@ -19,6 +19,8 @@ export const siteMetadata: ISiteMetadata = {
 
   urls: ["uggcf://uqsnaf.bet/"],
 
+  officialGroupPattern: [/HDFans/i],
+
   userInfo: {
     ...SchemaMetadata.userInfo!,
     selectors: {
@@ -104,6 +106,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "2TB",
       ratio: 3.5,
       seedingBonus: 800000,
+      isKept: true,
       privilege: "可以更新过期的外部信息；可以查看Extreme User论坛。Extreme User及以上用户会永远保留账号。",
     },
     {
@@ -113,6 +116,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "4TB",
       ratio: 4.0,
       seedingBonus: 1000000,
+      isKept: true,
       privilege: "得到五个邀请名额。",
     },
     {
@@ -122,6 +126,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "10TB",
       ratio: 5.0,
       seedingBonus: 1688888,
+      isKept: true,
       privilege: "得到十个邀请名额。",
     },
     {

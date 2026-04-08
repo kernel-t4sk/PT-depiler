@@ -124,6 +124,29 @@ export const siteMetadata: ISiteMetadata = {
       },
     },
   },
+
+  list: [
+    {
+      urlPattern: [/\/forum\.php\?mod=torrents/],
+    },
+  ],
+
+  detail: {
+    urlPattern: [/\/forum\.php\?mod=viewthread/],
+    selectors: {
+      title: { selector: ["span#thread_subject"] },
+      id: {
+        selector: ['div.pi a[href*="download.php?id="]'],
+        attr: "href",
+        filters: [{ name: "querystring", args: ["id"] }],
+      },
+      link: {
+        selector: ['div.pi a[href*="download.php?id="][href*="&passkey="]', 'div.pi a[href*="download.php?id="]'],
+        attr: "href",
+      },
+    },
+  },
+
   userInfo: {
     pickLast: ["id", "name"],
     process: [
@@ -148,15 +171,56 @@ export const siteMetadata: ISiteMetadata = {
         selectors: {
           uploaded: {
             selector: "#psts li:contains('上传量')",
-            filters: [{ name: "parseSize" }],
+            filters: [
+              (query: string) => {
+                const queryMatch = query.replace(/[\s,]/g, "").match(/上传量.+\/\s*([\d.]+[ZEPTGMK]?i?B)/i);
+                return queryMatch && queryMatch.length >= 2 ? queryMatch[1] : query;
+              },
+              { name: "parseSize" },
+            ],
           },
           downloaded: {
             selector: "#psts li:contains('下载量')",
-            filters: [{ name: "parseSize" }],
+            filters: [
+              (query: string) => {
+                const queryMatch = query.replace(/[\s,]/g, "").match(/下载量.+\/\s*([\d.]+[ZEPTGMK]?i?B)/i);
+                return queryMatch && queryMatch.length >= 2 ? queryMatch[1] : query;
+              },
+              { name: "parseSize" },
+            ],
+          },
+          trueUploaded: {
+            selector: '#psts li:contains("实际上传")',
+            filters: [
+              (query: string) => {
+                const queryMatch = query.replace(/[\s,]/g, "").match(/实际上传.+?([\d.]+[ZEPTGMK]?i?B)/i);
+                return queryMatch && queryMatch.length >= 2 ? queryMatch[1] : query;
+              },
+              { name: "parseSize" },
+            ],
+          },
+          trueDownloaded: {
+            selector: '#psts li:contains("实际下载")',
+            filters: [
+              (query: string) => {
+                const queryMatch = query.replace(/[\s,]/g, "").match(/实际下载.+\/\s*([\d.]+[ZEPTGMK]?i?B)/i);
+                return queryMatch && queryMatch.length >= 2 ? queryMatch[1] : query;
+              },
+              { name: "parseSize" },
+            ],
           },
           levelName: {
             selector: "a[href='home.php?mod=spacecp&ac=usergroup']",
             filters: [(query: string) => query.replace("用户组: ", "").trim()],
+          },
+          ratio: {
+            selector: "ul.bbda",
+            filters: [
+              (query: string) => {
+                const queryMatch = query.match(/分享率\s*([\d.]+)/);
+                return queryMatch && queryMatch.length >= 2 ? parseFloat(queryMatch[1]) : 0;
+              },
+            ],
           },
           bonus: {
             selector: "#ratio",
@@ -166,6 +230,13 @@ export const siteMetadata: ISiteMetadata = {
             selector: "#pbbs > li:contains('注册时间')",
             filters: [
               (query: string) => query.replace("注册时间", "").trim(),
+              { name: "parseTime", args: ["yyyy-MM-dd HH:mm"] },
+            ],
+          },
+          lastAccessAt: {
+            selector: "#pbbs > li:contains('最后访问')",
+            filters: [
+              (query: string) => query.replace("最后访问", "").trim(),
               { name: "parseTime", args: ["yyyy-MM-dd HH:mm"] },
             ],
           },

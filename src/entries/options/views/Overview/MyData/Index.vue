@@ -2,22 +2,24 @@
 import { computed, onMounted, reactive, ref, shallowRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
+import { differenceInDays } from "date-fns";
 import { isUndefined } from "es-toolkit/compat";
-import type { DataTableHeader } from "vuetify/lib/components/VDataTable/types";
-import { EResultParseStatus, type ISiteUserConfig, IUserInfo, TSiteID } from "@ptd/site";
+import type { DataTableHeader } from "vuetify";
+import { EResultParseStatus, type ISiteUserConfig, type IUserInfo, type TSiteID } from "@ptd/site";
 
 import { useConfigStore } from "@/options/stores/config.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { useTableCustomFilter } from "@/options/directives/useAdvanceFilter.ts";
-import { formatDate, formatNumber, formatSize, formatTimeAgo, simplifyNumber } from "@/options/utils.ts";
+import { formatDate, formatSize, formatTimeAgo } from "@/options/utils.ts";
 
 import SiteName from "@/options/components/SiteName.vue";
-import SiteFavicon from "@/options/components/SiteFavicon.vue";
+import SiteFavicon from "@/options/components/SiteFavicon/Index.vue";
 import ResultParseStatus from "@/options/components/ResultParseStatus.vue";
 import NavButton from "@/options/components/NavButton.vue";
 import UserLevelRequirementsTd from "./UserLevelRequirementsTd.vue";
 import HistoryDataViewDialog from "./HistoryDataViewDialog.vue";
+import BonusFormatSpan from "./BonusFormatSpan.vue";
 
 import { cancelFlushSiteLastUserInfo, fixUserInfo, flushSiteLastUserInfo, formatRatio } from "./utils.ts";
 
@@ -27,14 +29,18 @@ const configStore = useConfigStore();
 const runtimeStore = useRuntimeStore();
 const metadataStore = useMetadataStore();
 
+const currentDate = new Date();
+
+type TExtendDataTableHeader = DataTableHeader & { props?: any };
+
 const fullTableHeader = reactive([
   {
-    title: t("MyData.table.site"),
+    title: t("common.site"),
     key: "siteUserConfig.sortIndex",
     align: "center",
     props: { disabled: true },
   },
-  { title: t("MyData.table.username"), key: "name", align: "center" },
+  { title: t("common.username"), key: "name", align: "center" },
   { title: t("MyData.table.levelName"), key: "levelName", align: "start", width: "15%" },
   // NOTE: 这里将key设为 uploaded, trueUploaded 而不是虚拟的 userData，可以让 v-data-table 使用 uploaded 的进行排序
   { title: t("MyData.table.userData"), key: "uploaded", align: "end" },
@@ -48,13 +54,15 @@ const fullTableHeader = reactive([
   { title: t("levelRequirement.bonusPerHour"), key: "bonusPerHour", align: "end" },
   { title: t("MyData.table.invites"), key: "invites", align: "end" }, // 默认不显示
   { title: t("MyData.table.joinTime"), key: "joinTime", align: "center" },
+  { title: t("MyData.table.lastAccessAt"), key: "lastAccessAt", align: "center" }, // 默认不显示
   { title: t("MyData.table.updateAt"), key: "updateAt", align: "center" },
   { title: t("common.action"), key: "action", align: "center", sortable: false, props: { disabled: true } },
-] as (DataTableHeader & { props?: any })[]);
+] as TExtendDataTableHeader[]);
 
 const tableHeader = computed(() => {
   return fullTableHeader.filter(
-    (item) => item?.props?.disabled || configStore.tableBehavior.MyData.columns!.includes(item.key!),
+    (item: TExtendDataTableHeader) =>
+      item?.props?.disabled || configStore.tableBehavior.MyData.columns!.includes(item.key!),
   ) as DataTableHeader[];
 });
 
@@ -73,6 +81,7 @@ const filteredTableBooleanControlKeys = computed(() => {
 
 interface IUserInfoItem extends IUserInfo {
   siteUserConfig: ISiteUserConfig;
+  siteName: string;
 }
 
 const {
@@ -81,14 +90,17 @@ const {
   tableFilterFn,
   advanceFilterDictRef,
   updateTableFilterValueFn,
-  resetAdvanceFilterDictFn,
+  buildFilterDictFn,
   toggleKeywordStateFn,
 } = useTableCustomFilter<IUserInfoItem>({
   parseOptions: {
     keywords: ["site", "status", "siteUserConfig.groups"],
     ranges: ["updateAt", "messageCount"],
   },
-  titleFields: ["site", "name", "siteUserConfig.merge.name"],
+  titleFields: ["site", "siteName", "name"],
+  format: {
+    status: "number",
+  },
 });
 
 const tableSelected = ref<TSiteID[]>([]); // 选中的站点行
@@ -99,6 +111,16 @@ async function updateTableData() {
 
   for (const [siteId, siteUserConfig] of Object.entries(metadataStore.sites)) {
     const siteMeta = await metadataStore.getSiteMetadata(siteId);
+    const siteName = Array.from(
+      new Set(
+        [
+          siteMeta.name,
+          ...(siteMeta.aka ?? []),
+          metadataStore.siteNameMap?.[siteId],
+          siteUserConfig.merge?.name,
+        ].filter(Boolean),
+      ),
+    ).join("|$|");
 
     if (
       // 只显示私有站点的用户信息
@@ -118,8 +140,15 @@ async function updateTableData() {
       ...fixUserInfo(siteUserInfoData),
       site: siteId,
       siteUserConfig,
+      siteName,
       // 对 isDead 或者 isOffline 的站点不允许选择（ https://github.com/pt-plugins/PT-depiler/pull/140 ）
       selectable: !(siteMeta.isDead || siteUserConfig.isOffline),
+
+      // 预先计算 多少天未访问站点，以防止在 template 中反复计算
+      lastAccessDuration:
+        typeof siteUserInfoData.lastAccessAt === "number"
+          ? differenceInDays(currentDate, siteUserInfoData.lastAccessAt)
+          : 0,
     });
   }
 
@@ -152,15 +181,14 @@ async function multiOpen() {
 async function multiFlush() {
   let flushSiteIds: TSiteID[] = tableSelected.value;
   if (flushSiteIds.length === 0) {
-    if (confirm("刷新全部站点用户信息？（未选择任何站点时，默认刷新全部站点）")) {
-      flushSiteIds = tableData.value.map((item) => item.site);
-    }
+    flushSiteIds = tableData.value.map((item) => item.site);
+    runtimeStore.showSnakebar(t("MyData.index.noSiteSelectedRefreshAll"), { color: "info" });
   }
 
   if (flushSiteIds.length > 0) {
     flushSiteLastUserInfo(flushSiteIds);
   } else {
-    runtimeStore.showSnakebar("未选择任何站点，取消刷新", { color: "warning" });
+    runtimeStore.showSnakebar(t("MyData.index.noSiteSelectedCancelRefresh"), { color: "warning" });
   }
 }
 
@@ -180,11 +208,6 @@ function viewStatistic() {
       sites: tableSelected.value,
     },
   });
-}
-
-// Toggle function for double-click to switch number simplification
-function toggleNumberSimplification() {
-  configStore.myDataTableControl.simplifyBonusNumbers = !configStore.myDataTableControl.simplifyBonusNumbers;
 }
 </script>
 
@@ -321,7 +344,7 @@ function toggleNumberSimplification() {
           :label="t('common.search')"
           max-width="500"
           single-line
-          @click:clear="resetAdvanceFilterDictFn"
+          @click:clear="buildFilterDictFn('')"
         >
           <template #prepend-inner>
             <v-menu min-width="100">
@@ -337,7 +360,7 @@ function toggleNumberSimplification() {
                   :title="t('MyData.index.filter.todayNotUpdated')"
                   @click.stop="
                     () => {
-                      advanceFilterDictRef.updateAt.value = ['', formatDate(new Date(), 'yyyyMMdd')];
+                      advanceFilterDictRef.updateAt = ['', formatDate(currentDate, 'yyyyMMdd')];
                       updateTableFilterValueFn();
                     }
                   "
@@ -361,7 +384,7 @@ function toggleNumberSimplification() {
                   :title="t('MyData.index.filter.unreadMessage')"
                   @click.stop="
                     () => {
-                      advanceFilterDictRef.messageCount.value = [1, ' '];
+                      advanceFilterDictRef.messageCount = [1, ' '];
                       updateTableFilterValueFn();
                     }
                   "
@@ -544,79 +567,34 @@ function toggleNumberSimplification() {
 
       <!-- 魔力/积分 -->
       <template #item.bonus="{ item }">
-        <v-container
-          v-if="
-            configStore.myDataTableControl.showSeedingBonus &&
-            item.seedingBonus !== '' &&
-            !isUndefined(item.seedingBonus)
-          "
-        >
+        <v-container>
           <v-row align="center" class="flex-nowrap" justify="end">
             <v-icon :title="t('levelRequirement.bonus')" color="green-darken-4" icon="mdi-currency-usd" size="small" />
-            <span
-              class="text-no-wrap"
-              :title="typeof item.bonus !== 'undefined' ? formatNumber(item.bonus) : '-'"
-              @dblclick="toggleNumberSimplification"
-              style="cursor: pointer; user-select: none"
-              >{{
-                typeof item.bonus !== "undefined"
-                  ? configStore.myDataTableControl.simplifyBonusNumbers
-                    ? simplifyNumber(item.bonus)
-                    : formatNumber(item.bonus)
-                  : "-"
-              }}</span
-            >
+            <BonusFormatSpan :num="item.bonus" />
           </v-row>
-          <v-row align="center" class="flex-nowrap" justify="end">
+          <v-row
+            v-if="
+              configStore.myDataTableControl.showSeedingBonus &&
+              item.seedingBonus !== '' &&
+              !isUndefined(item.seedingBonus)
+            "
+            align="center"
+            class="flex-nowrap"
+            justify="end"
+          >
             <v-icon
               :title="t('levelRequirement.seedingBonus')"
               color="green-darken-4"
               icon="mdi-lightning-bolt-circle"
               size="small"
             />
-            <span
-              class="text-no-wrap"
-              :title="typeof item.seedingBonus !== 'undefined' ? formatNumber(item.seedingBonus) : '-'"
-              @dblclick="toggleNumberSimplification"
-              style="cursor: pointer; user-select: none"
-              >{{
-                typeof item.seedingBonus !== "undefined"
-                  ? configStore.myDataTableControl.simplifyBonusNumbers
-                    ? simplifyNumber(item.seedingBonus)
-                    : formatNumber(item.seedingBonus)
-                  : "-"
-              }}</span
-            >
+            <BonusFormatSpan :num="item.seedingBonus" />
           </v-row>
         </v-container>
-        <template v-else>
-          <v-icon :title="t('levelRequirement.bonus')" color="green-darken-4" icon="mdi-currency-usd" size="small" />
-          <span
-            class="text-no-wrap"
-            :title="typeof item.bonus !== 'undefined' ? formatNumber(item.bonus) : '-'"
-            @dblclick="toggleNumberSimplification"
-            style="cursor: pointer; user-select: none"
-            >{{
-              typeof item.bonus !== "undefined"
-                ? configStore.myDataTableControl.simplifyBonusNumbers
-                  ? simplifyNumber(item.bonus)
-                  : formatNumber(item.bonus)
-                : "-"
-            }}</span
-          >
-        </template>
       </template>
 
       <template #item.bonusPerHour="{ item }">
-        <span class="text-no-wrap" @dblclick="toggleNumberSimplification">
-          {{
-            typeof item.bonusPerHour !== "undefined"
-              ? configStore.myDataTableControl.simplifyBonusNumbers
-                ? simplifyNumber(item.bonusPerHour)
-                : formatNumber(item.bonusPerHour)
-              : "-"
-          }}
-        </span>
+        <BonusFormatSpan :num="item.bonusPerHour" />
       </template>
 
       <template #item.invites="{ item }">
@@ -629,12 +607,28 @@ function toggleNumberSimplification() {
           {{
             typeof item.joinTime !== "undefined"
               ? configStore.myDataTableControl.joinTimeFormat === "aliveWeek"
-                ? formatTimeAgo(item.joinTime, true)
+                ? formatTimeAgo(item.joinTime, { weekOnly: true })
                 : configStore.myDataTableControl.joinTimeFormat === "alive"
                   ? formatTimeAgo(item.joinTime)
                   : formatDate(item.joinTime, "yyyy-MM-dd")
               : "-"
           }}
+        </span>
+      </template>
+
+      <!-- 最近访问时间 -->
+      <template #item.lastAccessAt="{ item }">
+        <span class="text-no-wrap" :title="item.lastAccessAt ? (formatDate(item.lastAccessAt) as string) : '-'">
+          <template v-if="typeof item.lastAccessAt !== 'undefined'">
+            {{ formatDate(item.lastAccessAt) }}
+            <v-icon
+              v-if="item.lastAccessDuration >= 5"
+              icon="mdi-alert"
+              :color="item.lastAccessDuration >= 15 ? 'red' : 'amber'"
+              :title="t('MyData.table.lastAccessDurationNote', [item.lastAccessDuration])"
+            />
+          </template>
+          <template v-else>-</template>
         </span>
       </template>
 

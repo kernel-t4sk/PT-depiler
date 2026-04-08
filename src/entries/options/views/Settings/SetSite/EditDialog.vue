@@ -20,9 +20,8 @@ const isFormValid = ref<boolean>(false);
 const storedSiteUserConfig = ref<ISiteUserConfig & { valid?: boolean }>({ valid: false });
 provide("storedSiteUserConfig", storedSiteUserConfig);
 
-function patchSite() {
-  metadataStore.addSite(props.siteId, storedSiteUserConfig.value);
-  metadataStore.$save();
+async function patchSite() {
+  await metadataStore.addSite(props.siteId, storedSiteUserConfig.value);
   showDialog.value = false;
 }
 
@@ -41,7 +40,7 @@ function dialogEnter() {
         <v-toolbar color="blue-grey-darken-2">
           <v-toolbar-title>{{ t("SetSite.edit.title") }}</v-toolbar-title>
           <template #append>
-            <v-btn icon="mdi-close" @click="showDialog = false" />
+            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
           </template>
         </v-toolbar>
       </v-card-title>

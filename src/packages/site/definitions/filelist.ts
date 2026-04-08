@@ -27,7 +27,7 @@ export const siteMetadata: ISiteMetadata = {
   schema: "FileList",
 
   urls: ["uggcf://svyryvfg.vb/"],
-  formerHosts: ["flro.org"],
+  legacyUrls: ["https://flro.org/"],
 
   category: [
     {
@@ -66,6 +66,8 @@ export const siteMetadata: ISiteMetadata = {
       cross: { mode: "comma" },
     },
   ],
+
+  officialGroupPattern: [/Play(HD|SD|WEB|TV)$/i],
 
   search: {
     keywordPath: "params.search",
@@ -205,6 +207,15 @@ export const siteMetadata: ISiteMetadata = {
               },
             ],
           },
+          lastAccessAt: {
+            selector: ["td:contains('Last'):contains('seen') + td"],
+            filters: [
+              (query: string) => {
+                query = query.split(" (")[0];
+                return parseValidTimeString(query);
+              },
+            ],
+          },
           seeding: {
             selector: ["td:contains('Seed'):contains('bonus') + td > div:first"],
             filters: [
@@ -274,6 +285,7 @@ export const siteMetadata: ISiteMetadata = {
     {
       id: 4,
       name: "VIP",
+      groupType: "vip",
       privilege:
         "This class always has a minimum ratio equal to 2, regardless of the downloads made, and is exempt from hit&run rules. They can set their own Custom Title.",
     },

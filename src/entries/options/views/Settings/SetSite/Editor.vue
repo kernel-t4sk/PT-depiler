@@ -41,6 +41,12 @@ async function initSiteData(siteId: TSiteID, flush = false) {
     { inputSetting: {}, url: siteMetaData.value.urls[0] },
     await metadataStore.getSiteUserConfig(siteId, flush),
   );
+
+  // fix: customSiteUrl not show in Editor (#726)
+  if (!siteMetaData.value.urls.includes(siteUserConfig.value.url)) {
+    customSiteUrl.value = siteUserConfig.value.url;
+  }
+
   updateFormValid(siteMetaData.value.isDead ? true : isFormValid.value);
 }
 
@@ -96,7 +102,7 @@ const timeZone: Array<{ value: timezoneOffset; title: string }> = [
       @update:model-value="(v) => emit('update:formValid', v as boolean)"
     >
       <v-container class="pa-0">
-        <v-label class="my-2">基本信息</v-label>
+        <v-label class="my-2">{{ t("common.basicInfo") }}</v-label>
         <v-row>
           <v-col cols="12" md="4">
             <v-combobox
@@ -108,7 +114,7 @@ const timeZone: Array<{ value: timezoneOffset; title: string }> = [
             ></v-combobox>
           </v-col>
           <v-col cols="12" md="4">
-            <v-text-field v-model="siteMetaData.schema" :label="t('SetSite.common.type')" disabled hide-details />
+            <v-text-field v-model="siteMetaData.schema" :label="t('common.type')" disabled hide-details />
           </v-col>
           <v-col cols="12" md="4">
             <v-text-field
@@ -125,7 +131,7 @@ const timeZone: Array<{ value: timezoneOffset; title: string }> = [
               v-model="siteUserConfig.groups"
               :items="siteMetaData.tags"
               chips
-              label="站点分类"
+              :label="t('SetSite.common.groups')"
               multiple
               hide-details
             />
@@ -153,6 +159,7 @@ const timeZone: Array<{ value: timezoneOffset; title: string }> = [
                 {{ url }}
                 <v-spacer />
                 <v-btn
+                  :title="t('SetSite.common.open')"
                   :href="url"
                   color="info"
                   icon="mdi-arrow-top-right-bold-box-outline"
@@ -177,7 +184,7 @@ const timeZone: Array<{ value: timezoneOffset; title: string }> = [
         <v-divider />
 
         <template v-if="siteMetaData.userInputSettingMeta && siteUserConfig.inputSetting">
-          <v-label class="my-2">站点设置</v-label>
+          <v-label class="my-2">{{ t("SetSite.Editor.siteSettings") }}</v-label>
 
           <v-text-field
             v-for="userInputMeta in siteMetaData.userInputSettingMeta"
@@ -195,20 +202,19 @@ const timeZone: Array<{ value: timezoneOffset; title: string }> = [
           <v-divider />
         </template>
 
-        <v-label class="my-2">其他设置</v-label>
+        <v-label class="my-2">{{ t("SetSite.Editor.otherSettings") }}</v-label>
 
         <v-text-field
           v-model="siteUserConfig.downloadLinkAppendix"
-          :label="`下载链接后缀`"
-          :hint="`该字段会被自动添加到该站点的下载链接后`"
+          :label="t('SetSite.Editor.downloadLinkSuffix')"
+          :hint="t('SetSite.Editor.downloadLinkSuffixHint')"
         >
           <template #append>
             <v-tooltip max-width="400" location="top">
               <template #activator="{ props }">
                 <v-icon v-bind="props" class="mr-4" icon="mdi-information" color="info" />
               </template>
-              如插件获得的链接为 https://example.com/download.php?id=1，此处设置为 &passkey=xxxx， 则最终下载链接为
-              https://example.com/download.php?id=1&passkey=xxxx
+              {{ t("SetSite.Editor.downloadLinkSuffixExample") }}
             </v-tooltip>
           </template>
         </v-text-field>
@@ -219,8 +225,8 @@ const timeZone: Array<{ value: timezoneOffset; title: string }> = [
           :max="10 * 60e3"
           :min="0"
           :step="1e3"
-          hint="影响该站点请求（种子搜索、用户信息获取）的超时等待时间"
-          label="请求超时"
+          :hint="t('SetSite.Editor.requestTimeoutHint')"
+          :label="t('SetSite.Editor.requestTimeout')"
           persistent-hint
         >
           <template #append>
@@ -233,10 +239,10 @@ const timeZone: Array<{ value: timezoneOffset; title: string }> = [
         <v-slider
           v-model="siteUserConfig.downloadInterval"
           :min="0"
-          :max="1800"
-          :step="30"
-          hint="影响该站点的下载间隔时间（为了安全考虑，插件不会严格遵守该设置，实际间隔总是会略大于等于设置的间隔）"
-          label="下载间隔"
+          :max="(siteUserConfig.downloadInterval ?? 0) < 600 ? 600 : 1200"
+          :step="(siteUserConfig.downloadInterval ?? 0) <= 60 ? 1 : 10"
+          :hint="t('SetSite.Editor.downloadIntervalHint')"
+          :label="t('SetSite.Editor.downloadInterval')"
           persistent-hint
         >
           <template #append>
@@ -257,7 +263,7 @@ const timeZone: Array<{ value: timezoneOffset; title: string }> = [
         >
           <template #append>
             <v-btn variant="flat" @click="siteUserConfig.uploadSpeedLimit = 0">
-              {{ siteUserConfig.uploadSpeedLimit ?? 0 }} MB/s
+              {{ siteUserConfig.uploadSpeedLimit ?? 0 }} MiB/s
             </v-btn>
           </template>
         </v-slider>

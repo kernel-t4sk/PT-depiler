@@ -3,8 +3,8 @@
 </p>
 
 <p align="center">
-    <a href="../../releases?include_prereleases/latest" title="GitHub Pre-releases"><img src="https://img.shields.io/github/release/pt-plugins/PT-depiler.svg?include_prereleases&label=pre-release"></a>
-    <a href="../../releases" title="GitHub All Releases"><img alt="Releases" src="https://img.shields.io/github/downloads/pt-plugins/PT-depiler/total.svg?label=Downloads"></a>
+    <a href="../../releases?include_prereleases/latest" title="GitHub Releases"><img src="https://img.shields.io/github/v/release/pt-plugins/PT-depiler.svg?include_prereleases"></a>
+    <a href="../../releases" title="GitHub Download"><img src="https://img.shields.io/github/downloads/pt-plugins/PT-depiler/total.svg?label=Downloads"></a>
     <img src="https://img.shields.io/badge/Used-TypeScript%20Vue-blue.svg">
     <a href="./LICENSE" title="GitHub license"><img src="https://img.shields.io/github/license/pt-plugins/PT-depiler.svg?label=License" alt="GitHub license"/></a>
     <a href="https://t.me/joinchat/NZ9NCxPKXyby8f35rn_QTw"><img src="https://img.shields.io/badge/Telegram-Chat-blue.svg?logo=telegram" alt="Telegram"/></a>
@@ -32,6 +32,8 @@ PT-depiler 是在原 [PT-Plugin-Plus](https://github.com/pt-plugins/PT-Plugin-Pl
 ### 🔧 安装 Installation
 
 #### 1. 从各个浏览器的扩展商店安装
+
+在各主流浏览器的扩展商店中均已上架 PT-Depiler，您可以直接前往对应的扩展商店搜索 "PT-Depiler" 进行安装，或点击表格状态列的徽标图片直接跳转到对应的扩展商店页面进行安装。
 
 |          浏览器           | 状态                                                                                                                                                                                                                                                                                                                                |
 |:----------------------:|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|

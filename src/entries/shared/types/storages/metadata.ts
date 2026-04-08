@@ -54,8 +54,15 @@ export interface IDownloaderMetadata extends DownloaderBaseConfig {
   suggestTags?: string[];
 
   sortIndex?: number; // 排序索引，默认值取 100
+  autoFlushStatus?: number; // 自动刷新状态，0: 关闭，其他数值表示刷新间隔的秒数
 
   [key: string]: any; // 其他配置项
+}
+
+export interface IDefaultDownloaderConfig {
+  id?: TDownloaderKey;
+  folder?: string;
+  tags?: string;
 }
 
 export type TMediaServerKey = string;
@@ -91,9 +98,6 @@ export interface IMetadataPiniaStorageSchema {
   // 搜索方案配置
   solutions: Record<TSolutionKey, ISearchSolutionMetadata>;
 
-  // 默认搜索方案
-  defaultSolutionId: TSolutionKey | "default";
-
   /**
    * 搜索快照配置（元信息）
    * 具体快照内容需要通过 getSearchResultSnapshotData() 方法获取
@@ -108,6 +112,12 @@ export interface IMetadataPiniaStorageSchema {
 
   // 备份服务器配置
   backupServers: Record<TBackupServerKey, IBackupServerMetadata>;
+
+  // 默认搜索方案
+  defaultSolutionId: TSolutionKey | "default";
+
+  // 默认下载器配置
+  defaultDownloader: IDefaultDownloaderConfig;
 
   // 上一次搜索时在结果页面的筛选词，需要启用 configStore.searchEntity.saveLastFilter
   lastSearchFilter?: string;

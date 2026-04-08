@@ -1,22 +1,25 @@
 <script setup lang="ts">
 import { inject } from "vue";
-import type { ITorrent } from "@ptd/site";
+import { useI18n } from "vue-i18n";
 
 import { sendMessage } from "@/messages.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
-import { doKeywordSearch, siteInstance } from "@/content-script/app/utils.ts";
 
-import SpeedDialBtn from "@/content-script/app/components/SpeedDialBtn.vue";
+import type { IRemoteDownloadDialogData } from "../types.ts";
+import { copyTextToClipboard, doKeywordSearch, siteInstance } from "../utils.ts";
+
+import SpeedDialBtn from "../components/SpeedDialBtn.vue";
 
 const metadataStore = useMetadataStore();
 const runtimeStore = useRuntimeStore();
+const { t } = useI18n();
 
 async function parseDetailPage() {
   const parsedResult = await siteInstance.value?.transformDetailPage(document);
 
   if (typeof parsedResult?.link === "undefined") {
-    runtimeStore.showSnakebar("无法解析当前页面种子链接", { color: "error" });
+    runtimeStore.showSnakebar(t("contentScript.cannotParseDetailLink"), { color: "error" });
     throw new Error("无法解析当前页面种子链接");
   }
 
@@ -27,24 +30,23 @@ async function parseDetailPage() {
   return parsedResult!;
 }
 
-const remoteDownloadDialogData = inject<{ show: boolean; torrents: ITorrent[] }>("remoteDownloadDialogData")!;
+const remoteDownloadDialogData = inject<IRemoteDownloadDialogData>("remoteDownloadDialogData")!;
 
 function handleLinkCopy() {
   parseDetailPage().then(async (torrent) => {
     const downloadUrl = await sendMessage("getTorrentDownloadLink", torrent);
 
-    try {
-      await navigator.clipboard.writeText(downloadUrl);
-      runtimeStore.showSnakebar("下载链接已复制到剪贴板", { color: "success" });
-    } catch (e) {
-      runtimeStore.showSnakebar("复制下载链接失败", { color: "error" });
-    }
+    const copied = await copyTextToClipboard(downloadUrl);
+    runtimeStore.showSnakebar(copied ? t("contentScript.copyLinkSuccess") : t("contentScript.copyLinkFailed"), {
+      color: copied ? "success" : "error",
+    });
   });
 }
 
-function handleRemoteDownload() {
+function handleRemoteDownload(isDefaultSend = false) {
   parseDetailPage().then((torrent) => {
     remoteDownloadDialogData.torrents = [torrent];
+    remoteDownloadDialogData.isDefaultSend = isDefaultSend;
     remoteDownloadDialogData.show = true;
   });
 }
@@ -57,16 +59,25 @@ function handleSearch() {
 </script>
 
 <template>
-  <SpeedDialBtn key="copy" color="light-blue" icon="mdi-content-copy" title="复制链接" @click="handleLinkCopy" />
+  <SpeedDialBtn key="copy" color="light-blue" icon="mdi-content-copy" :title="t('contentScript.copyLink')" @click="handleLinkCopy" />
   <SpeedDialBtn
     key="download"
     :disabled="metadataStore.getEnabledDownloaders.length === 0"
     color="light-blue"
-    icon="mdi-tray-arrow-down"
-    title="推送到..."
-    @click="handleRemoteDownload"
+    icon="mdi-cloud-download"
+    :title="t('contentScript.pushTo')"
+    @click="() => handleRemoteDownload()"
   />
-  <SpeedDialBtn key="search" color="indigo" icon="mdi-home-search" title="快捷搜索" @click="handleSearch" />
+  <SpeedDialBtn
+    key="download_default"
+    v-if="metadataStore.defaultDownloader?.id"
+    :disabled="metadataStore.getEnabledDownloaders.length === 0"
+    color="light-blue"
+    icon="mdi-download"
+    :title="t('contentScript.pushToDefault')"
+    @click="handleRemoteDownload(true)"
+  />
+  <SpeedDialBtn key="search" color="indigo" icon="mdi-home-search" :title="t('contentScript.quickSearch')" @click="handleSearch" />
 </template>
 
 <style scoped lang="scss"></style>

@@ -41,6 +41,25 @@ export const SchemaMetadata: Partial<ISiteMetadata> = {
   search: {},
 };
 
+const defaultTorrentSelectorKey = [
+  "id",
+  "title",
+  "subTitle",
+  "url",
+  "link",
+  "time",
+  "size",
+  "author",
+  "seeders",
+  "leechers",
+  "completed",
+  "comments",
+  "category",
+  "tags",
+  "progress",
+  "status",
+];
+
 // 适用于公网BT站点，同时也作为 所有站点方法 的基类
 export default class BittorrentSite {
   public readonly metadata: ISiteMetadata; // 实际过程中使用的配置文件
@@ -162,6 +181,7 @@ export default class BittorrentSite {
     // 0. 检查该站点是否允许搜索
     if (!this.allowSearch) {
       result.status = EResultParseStatus.passParse;
+      result.statusMsg = "i18n.siteNotEnabled";
       return result;
     }
 
@@ -180,6 +200,7 @@ export default class BittorrentSite {
     // 检查该搜索入口是否设置为禁用
     if (searchEntry.enabled === false) {
       result.status = EResultParseStatus.passParse;
+      result.statusMsg = "i18n.searchEntityNotEnabled";
       return result;
     }
 
@@ -189,6 +210,7 @@ export default class BittorrentSite {
     if (searchEntry.skipWhiteSpacePlaceholder === true && !keywords) {
       console?.log(`[Site] ${this.name} skipped due to empty keywords`);
       result.status = EResultParseStatus.passParse;
+      result.statusMsg = "i18n.noEmptyKeywords";
       return result;
     }
 
@@ -196,6 +218,7 @@ export default class BittorrentSite {
     if (searchEntry.skipNonLatinCharacters === true && keywords && hasNonLatinCharacters(keywords)) {
       console?.log(`[Site] ${this.name} skipped due to non-Latin characters in query:`, keywords);
       result.status = EResultParseStatus.passParse;
+      result.statusMsg = "i18n.noNonLatin";
       return result;
     }
 
@@ -229,6 +252,7 @@ export default class BittorrentSite {
           // 检查是否跳过
           if (advanceConfig === false || advanceConfig.enabled === false) {
             result.status = EResultParseStatus.passParse;
+            result.statusMsg = "i18n.noAdvanceParams";
             return result;
           }
 
@@ -340,12 +364,16 @@ export default class BittorrentSite {
   }
 
   protected getFieldData(element: Element | object, elementQuery: IElementQuery): any {
-    let query: any = String(elementQuery.text ?? "");
+    let query: any = undefined;
 
     if (elementQuery.selector) {
       let usedSelector: string | undefined;
+
       const selectors = ([] as string[]).concat(elementQuery.selector);
       for (usedSelector of selectors) {
+        // 在每次循环开始前，重置 query 为 undefined
+        query = undefined;
+
         if (element instanceof Node) {
           // 这里我们预定义一个特殊的 Css Selector，即不进行子元素选择
           const another = (
@@ -374,28 +402,32 @@ export default class BittorrentSite {
           query = usedSelector === ":self" ? element : get(element, usedSelector)!;
         }
 
-        // noinspection SuspiciousTypeOfGuard
-        if (typeof query === "undefined") {
-          query = "";
+        if (typeof query !== "undefined") {
+          break; // 说明该选择器找到了对应元素，跳出循环
         }
 
-        // noinspection SuspiciousTypeOfGuard
+        // 在每次循环结束后，重置 usedSelector
+        usedSelector = undefined;
+      }
+
+      // 根据 usedSelector 来判断是否找到了对应元素，找到了则应用 filters
+      if (typeof usedSelector !== "undefined") {
+        // 此时 query 一定不为 undefined
         if (typeof query === "string") {
           query = query.trim();
         }
-        if (query !== "") {
-          break;
+
+        // 应用 filters
+        if (selectors.length > 0 && elementQuery.switchFilters?.[usedSelector!]) {
+          query = this.runQueryFilters(query, elementQuery.switchFilters[usedSelector!]);
+        } else if (elementQuery.filters && elementQuery.filters?.length > 0) {
+          query = this.runQueryFilters(query, elementQuery.filters);
         }
-
-        usedSelector = undefined; // 在每次循环结束后，重置 usedSelector
-      }
-
-      if (selectors.length > 0 && elementQuery.switchFilters?.[usedSelector!]) {
-        query = this.runQueryFilters(query, elementQuery.switchFilters[usedSelector!]);
-      } else if (elementQuery.filters && elementQuery.filters?.length > 0) {
-        query = this.runQueryFilters(query, elementQuery.filters);
       }
     }
+
+    // 此时如果 query 仍为 undefined 应该回落到 elementQuery.text ?? ""
+    query ??= elementQuery.text ?? ""; // 不强制转为字符串，保持原有类型，方便后续处理
 
     // noinspection SuspiciousTypeOfGuard
     if (typeof query === "string") {
@@ -404,6 +436,8 @@ export default class BittorrentSite {
         // 尽可能的将返回值转成数字类型
         query = isNaN(parseInt(query)) ? 0 : parseInt(query);
       }
+    } else if (typeof query === "number") {
+      query = isNaN(query) ? 0 : query;
     }
 
     return query;
@@ -531,24 +565,6 @@ export default class BittorrentSite {
 
     // FIXME 对于每个 searchEntry，其需要获取的 torrentKey 应该都是一样的，但是目前会导致在每个loop中都重复生成相同的 key，不过没太大关系
     const definedTorrentSelectorKey = Object.keys(searchEntry!.selectors!).filter((key) => key !== "rows");
-    const defaultTorrentSelectorKey = [
-      "id",
-      "title",
-      "subTitle",
-      "url",
-      "link",
-      "time",
-      "size",
-      "author",
-      "seeders",
-      "leechers",
-      "completed",
-      "comments",
-      "category",
-      "tags",
-      "progress",
-      "status",
-    ];
 
     /**
      * 对种子文件的任意非rows属性进行处理，例如 "id" 属性：

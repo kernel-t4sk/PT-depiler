@@ -1,4 +1,4 @@
-import type { ISiteMetadata } from "../types";
+import type { ISiteMetadata, ITorrent } from "../types";
 import { AxiosRequestConfig, AxiosResponse } from "axios";
 import PrivateSite from "../schemas/AbstractPrivateSite";
 
@@ -16,7 +16,7 @@ export const siteMetadata: ISiteMetadata = {
   id: "milkie",
   version: 1,
   name: "Milkie",
-  aka: ["ME"],
+  aka: ["ME", "奶昔"],
   description: "Milkie.cc (ME) is Private Torrent Tracker for 0DAY / GENERAL",
   tags: ["综合"],
   timezoneOffset: "+0200",
@@ -50,6 +50,7 @@ export const siteMetadata: ISiteMetadata = {
       rows: { selector: "torrents" },
       id: { selector: "id" },
       title: { selector: "releaseName" },
+      url: { selector: "id", filters: [{ name: "prepend", args: ["/browse/"] }] },
       category: { selector: "category", filters: [(catId: number) => categoryMap[catId]] },
       time: {
         selector: "createdAt",
@@ -75,6 +76,7 @@ export const siteMetadata: ISiteMetadata = {
         title: { selector: "a.mat-caption", attr: "title" },
         url: { selector: "a.mat-caption", attr: "href" },
         link: { selector: "a.mat-icon-button", attr: "href" },
+        time: { selector: "span.date", attr: "title", filters: [{ name: "parseTime" }] },
         size: { selector: "div.size > span" },
         completed: { selector: "div.nos > span:nth-child(1)" },
         seeders: { selector: "div.nos > span:nth-child(2)" },
@@ -134,5 +136,10 @@ export default class Milkie extends PrivateSite {
     };
 
     return super.request<T>(axiosConfig, checkLogin);
+  }
+
+  protected parseTorrentRowForLink(torrent: Partial<ITorrent>): Partial<ITorrent> {
+    torrent.link = `/api/v1/torrents/${torrent.id}/torrent?key=${encodeURIComponent(this.userConfig.inputSetting!.token)}`;
+    return torrent;
   }
 }

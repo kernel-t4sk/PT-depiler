@@ -16,7 +16,7 @@ export const siteMetadata: ISiteMetadata = {
   version: 1,
   id: "springsunday",
   name: "SpringSunday",
-  aka: ["CMCT", "SSD"],
+  aka: ["CMCT", "SSD", "春天"],
   description: "Classic Movie Compression Team",
   tags: ["影视", "音乐", "综合"],
 
@@ -26,7 +26,7 @@ export const siteMetadata: ISiteMetadata = {
   schema: "NexusPHP",
 
   urls: ["uggcf://fcevatfhaqnl.arg/"],
-  formerHosts: ["hdcmct.org"],
+  legacyUrls: ["https://hdcmct.org/"],
 
   category: [
     {
@@ -218,8 +218,20 @@ export const siteMetadata: ISiteMetadata = {
       cross: false,
     },
   ],
+
+  officialGroupPattern: [/-(CMCT|cmctv)/i],
+
   search: {
     ...SchemaMetadata.search,
+    advanceKeywordParams: {
+      ...SchemaMetadata.search?.advanceKeywordParams!,
+      douban: {
+        requestConfigTransformer: ({ requestConfig: config }) => {
+          set(config!, "params.search_area", 5); // params "&search_area=4"
+          return config!;
+        },
+      },
+    },
     selectors: {
       ...SchemaMetadata.search!.selectors,
       id: {
@@ -323,6 +335,7 @@ export const siteMetadata: ISiteMetadata = {
       },
     },
   },
+
   levelRequirements: [
     {
       id: 1,

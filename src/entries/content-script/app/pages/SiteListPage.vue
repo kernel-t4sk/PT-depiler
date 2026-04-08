@@ -1,17 +1,21 @@
 <script setup lang="ts">
 import { inject, ref, shallowRef } from "vue";
+import { useI18n } from "vue-i18n";
 import { type ITorrent } from "@ptd/site";
 
 import { sendMessage } from "@/messages.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
-import { doKeywordSearch, siteInstance, wrapperConfirmFn } from "../utils.ts";
 
-import AdvanceListModuleDialog from "@/content-script/app/components/AdvanceListModuleDialog.vue";
-import SpeedDialBtn from "@/content-script/app/components/SpeedDialBtn.vue";
+import type { IRemoteDownloadDialogData } from "../types.ts";
+import { copyTextToClipboard, doKeywordSearch, siteInstance, wrapperConfirmFn } from "../utils.ts";
+
+import AdvanceListModuleDialog from "../components/AdvanceListModuleDialog.vue";
+import SpeedDialBtn from "../components/SpeedDialBtn.vue";
 
 const metadataStore = useMetadataStore();
 const runtimeStore = useRuntimeStore();
+const { t } = useI18n();
 
 async function parseListPage(showNoTorrentError = true) {
   // 使用克隆的文档，避免污染原始文档
@@ -19,7 +23,7 @@ async function parseListPage(showNoTorrentError = true) {
 
   let errorMessage = "";
   if ((parsedResult?.torrents ?? []).length === 0) {
-    errorMessage = "未解析到当前页面种子";
+    errorMessage = t("contentScript.noTorrentParsed");
   }
 
   if (showNoTorrentError && errorMessage) {
@@ -39,7 +43,7 @@ function handleLocalDownloadMulti() {
   parseListPage()
     .then(({ torrents }) => {
       for (const torrent of torrents) {
-        sendMessage("downloadTorrentToLocalFile", { torrent });
+        sendMessage("downloadTorrent", { torrent, downloaderId: "local" });
       }
     })
     .finally(() => {
@@ -60,10 +64,12 @@ function handleLinkCopyMulti() {
           downloadUrls.push(downloadUrl);
         }
 
-        await navigator.clipboard.writeText(downloadUrls.join("\n").trim());
-        runtimeStore.showSnakebar("下载链接已复制到剪贴板", { color: "success" });
+        const copied = await copyTextToClipboard(downloadUrls.join("\n").trim());
+        runtimeStore.showSnakebar(copied ? t("contentScript.copyLinkSuccess") : t("contentScript.copyLinkFailed"), {
+          color: copied ? "success" : "error",
+        });
       } catch (e) {
-        runtimeStore.showSnakebar("复制下载链接失败", { color: "error" });
+        runtimeStore.showSnakebar(t("contentScript.copyLinkFailed"), { color: "error" });
       }
     })
     .finally(() => {
@@ -71,12 +77,13 @@ function handleLinkCopyMulti() {
     });
 }
 
-const remoteDownloadDialogData = inject<{ show: boolean; torrents: ITorrent[] }>("remoteDownloadDialogData")!;
+const remoteDownloadDialogData = inject<IRemoteDownloadDialogData>("remoteDownloadDialogData")!;
 
-function handleRemoteDownloadMulti() {
+function handleRemoteDownloadMulti(isDefaultSend = false) {
   parseListPage().then(({ torrents }) => {
     if (torrents.length > 0) {
       remoteDownloadDialogData.torrents = torrents;
+      remoteDownloadDialogData.isDefaultSend = isDefaultSend;
       remoteDownloadDialogData.show = true;
     }
   });
@@ -107,7 +114,7 @@ async function handleSearch() {
     :loading="localDownloadMultiStatus"
     color="light-blue"
     icon="mdi-content-save-all"
-    title="本地下载"
+    :title="t('downloaderLabel.localDownload')"
     @click="wrapperConfirmFn(handleLocalDownloadMulti)"
   />
   <SpeedDialBtn
@@ -115,26 +122,35 @@ async function handleSearch() {
     :loading="linkCopyMultiStatus"
     color="light-blue"
     icon="mdi-content-copy"
-    title="复制链接"
+    :title="t('contentScript.copyLink')"
     @click="wrapperConfirmFn(handleLinkCopyMulti)"
   />
   <SpeedDialBtn
     key="download"
     :disabled="metadataStore.getEnabledDownloaders.length === 0"
     color="light-blue"
-    icon="mdi-tray-arrow-down"
-    title="推送到..."
-    @click="handleRemoteDownloadMulti"
+    icon="mdi-cloud-download"
+    :title="t('contentScript.pushTo')"
+    @click="() => handleRemoteDownloadMulti()"
+  />
+  <SpeedDialBtn
+    key="download_default"
+    v-if="metadataStore.defaultDownloader?.id"
+    :disabled="metadataStore.getEnabledDownloaders.length === 0"
+    color="light-blue"
+    icon="mdi-download"
+    :title="t('contentScript.pushToDefault')"
+    @click="() => handleRemoteDownloadMulti(true)"
   />
 
   <SpeedDialBtn
     key="advance"
     color="indigo"
     icon="mdi-checkbox-multiple-marked"
-    title="高级列表"
+    :title="t('contentScript.advanceList')"
     @click="handleAdvanceListModule"
   />
-  <SpeedDialBtn key="search" color="indigo" icon="mdi-home-search" title="快捷搜索" @click="handleSearch" />
+  <SpeedDialBtn key="search" color="indigo" icon="mdi-home-search" :title="t('contentScript.quickSearch')" @click="handleSearch" />
 
   <AdvanceListModuleDialog v-model="showAdvanceListModuleDialog" :torrent-items="parsedTorrents" />
 </template>

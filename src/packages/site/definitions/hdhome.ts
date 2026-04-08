@@ -314,6 +314,8 @@ export const siteMetadata: ISiteMetadata = {
     },
   ],
 
+  officialGroupPattern: [/(-hdh|.*@HDHome)/i],
+
   search: {
     ...SchemaMetadata.search,
     selectors: {
@@ -363,6 +365,10 @@ export const siteMetadata: ISiteMetadata = {
           return bonusPerHour;
         },
       },
+    },
+    donorConfig: {
+      ...SchemaMetadata.userInfo!.donorConfig,
+      bonusPerHourMultiplier: 1, // selector 已能正确选中加倍后的时魔
     },
   },
 

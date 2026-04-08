@@ -131,6 +131,8 @@ export const siteMetadata: ISiteMetadata = {
     CategoryInclbookmarked,
   ],
 
+  officialGroupPattern: ["AilMWeb", "-PANDA", "@Panda"],
+
   searchEntry: {
     area_normal: { name: "综合", requestConfig: { url: "/torrents.php" } },
     area_special: { name: "有声书", enabled: false, requestConfig: { url: "/special.php" } },
@@ -213,6 +215,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "8192GB",
       ratio: 6.0,
       seedingBonus: 1008000,
+      isKept: true,
       privilege: "得到五个邀请名额。Nexus Master及以上用户会永远保留账号。",
     },
   ],

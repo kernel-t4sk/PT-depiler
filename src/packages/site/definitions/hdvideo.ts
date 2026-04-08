@@ -1,6 +1,8 @@
 import type { ISiteMetadata } from "../types";
+import { SchemaMetadata } from "../schemas/NexusPHP";
 
 export const siteMetadata: ISiteMetadata = {
+  ...SchemaMetadata,
   version: 1,
   id: "hdvideo",
   name: "HDVideo",
@@ -10,9 +12,10 @@ export const siteMetadata: ISiteMetadata = {
   type: "private",
   schema: "NexusPHP",
 
-  urls: ["https://hdvideo.one/"],
+  urls: ["https://hdvideo.top/"],
+  legacyUrls: ["https://hdvideo.one/"],
 
-  isDead: true,
+  officialGroupPattern: [/(-HDVWEB|-HDVMV)/i],
 
   levelRequirements: [
     {
@@ -64,6 +67,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "2TB",
       ratio: 4.0,
       seedingBonus: 604800,
+      isKept: true,
       privilege: "可以查看其它用户的评论、帖子历史。Veteran User及以上用户会永远保留账号。",
     },
     {
@@ -73,6 +77,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "4TB",
       ratio: 4.5,
       seedingBonus: 806400,
+      isKept: true,
       privilege: "可以更新过期的外部信息；可以查看Extreme User论坛。",
     },
     {
@@ -82,6 +87,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "6TB",
       ratio: 5.0,
       seedingBonus: 1008000,
+      isKept: true,
       privilege: "得到三个邀请名额。",
     },
     {
@@ -91,6 +97,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "8TB",
       ratio: 5.5,
       seedingBonus: 1310400,
+      isKept: true,
       privilege: "得到五个邀请名额。",
     },
   ],

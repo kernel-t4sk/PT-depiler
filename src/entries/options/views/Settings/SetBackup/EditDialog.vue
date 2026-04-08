@@ -35,13 +35,13 @@ function editClientConfig() {
         <v-toolbar color="blue-grey-darken-2">
           <v-toolbar-title>{{ t("SetDownloader.edit.title") }}</v-toolbar-title>
           <template #append>
-            <v-btn icon="mdi-close" @click="showDialog = false" />
+            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
           </template>
         </v-toolbar>
       </v-card-title>
       <v-divider />
       <v-card-text>
-        <Editor v-model="clientConfig" />
+        <Editor v-if="clientConfig" v-model="clientConfig" />
       </v-card-text>
       <v-divider />
       <v-card-actions>

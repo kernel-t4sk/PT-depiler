@@ -4,57 +4,16 @@ import {
   type ISiteMetadata,
   type TSelectSearchCategoryValue,
 } from "../types";
-import { parseTimeToLive } from "../utils";
-import { KB, MB, GB, TB } from "../utils/filesize";
+import { parseTimeToLiveToDate } from "../utils";
 import { set } from "es-toolkit/compat";
 
-const SIZE_REGEX = /([\d.]+)\s*(GB|MB|TB|KB|B)/i;
-const AVAILABLE_REGEX = /Available:\s*(\d+)/i;
-
-const SIZE_MULTIPLIERS = { 'TB': TB, 'GB': GB, 'MB': MB, 'KB': KB, 'B': 1 } as const;
-
 const IPT_SELECTORS = {
-  ROWS: ["table#torrents > tbody > tr", "table.torrents > tbody > tr", "table > tbody > tr:has(td.al)", "tr:has(td.al)"],
+  ROWS: ["table#torrents > tbody > tr:has(td.al)"],
   SIZE: ["> td:nth-child(6)", "td:contains('MB')", "td:contains('GB')", "td:contains('TB')"],
   SEEDERS: ["td:nth-last-child(2)", "td:contains('seeders')", "td.seeders"],
   LEECHERS: ["td:nth-last-child(1)", "td:contains('leechers')", "td.leechers"],
   COMPLETED: ["td:nth-last-child(3)", "td:contains('snatched')", "td.completed"],
-  CATEGORY: ["td:eq(0) img", "td:first-child img"]
-};
-
-const createTableFieldSelector = (fieldName: string): string[] => [
-  `th:contains('${fieldName}') + td`,
-  `td:contains('${fieldName}')`,
-  `tr:contains('${fieldName}') td:last-child`,
-  `table tr:has(th:contains('${fieldName}')) td:last-child`
-];
-
-const parseIPTorrentsStats = (query: string): number => {
-  if (!query?.trim()) return 0;
-  try {
-    const sizeMatch = query.match(SIZE_REGEX);
-    if (sizeMatch) {
-      const value = parseFloat(sizeMatch[1]);
-      const unit = sizeMatch[2].toUpperCase() as keyof typeof SIZE_MULTIPLIERS;
-      return isNaN(value) ? 0 : value * (SIZE_MULTIPLIERS[unit] || 1);
-    }
-    const num = parseFloat(query.match(/[\d.]+/)?.[0] || '0');
-    return isNaN(num) ? 0 : num;
-  } catch {
-    return 0;
-  }
-};
-
-const parseIPTorrentsInvites = (query: string): number => {
-  if (!query?.trim()) return 0;
-  try {
-    const availableMatch = query.match(AVAILABLE_REGEX);
-    if (availableMatch) return parseInt(availableMatch[1], 10) || 0;
-    const num = parseInt(query.match(/\d+/)?.[0] || '0', 10);
-    return isNaN(num) ? 0 : num;
-  } catch {
-    return 0;
-  }
+  CATEGORY: ["td:eq(0) img", "td:first-child img"],
 };
 
 const categoryPart: Pick<ISearchCategories, "cross" | "generateRequestConfig"> = {
@@ -219,8 +178,8 @@ export const siteMetadata: ISiteMetadata = {
     requestConfig: { url: "/t" },
     requestDelay: 1000,
     selectors: {
-      rows: { 
-        selector: IPT_SELECTORS.ROWS
+      rows: {
+        selector: IPT_SELECTORS.ROWS,
       },
       id: {
         selector: " > td.al > a",
@@ -251,13 +210,13 @@ export const siteMetadata: ISiteMetadata = {
         filters: [
           (query: string) => {
             const queryMatch = query.match(/(?:\| )?([\d.]+ .+? ago)/);
-            return queryMatch && queryMatch.length >= 2 ? parseTimeToLive(queryMatch[1]) : "";
+            return queryMatch && queryMatch.length >= 2 ? parseTimeToLiveToDate(queryMatch[1]) : "";
           },
         ],
       },
-      size: { 
+      size: {
         selector: IPT_SELECTORS.SIZE,
-        filters: [{ name: "parseSize" }]
+        filters: [{ name: "parseSize" }],
       },
       author: {
         selector: "div.sub",
@@ -272,26 +231,66 @@ export const siteMetadata: ISiteMetadata = {
         ],
       },
       category: { selector: IPT_SELECTORS.CATEGORY, attr: "alt" },
-      seeders: { 
+      seeders: {
         selector: IPT_SELECTORS.SEEDERS,
-        filters: [{ name: "parseNumber" }]
+        filters: [{ name: "parseNumber" }],
       },
-      leechers: { 
+      leechers: {
         selector: IPT_SELECTORS.LEECHERS,
-        filters: [{ name: "parseNumber" }]
+        filters: [{ name: "parseNumber" }],
       },
-      completed: { 
+      completed: {
         selector: IPT_SELECTORS.COMPLETED,
-        filters: [{ name: "parseNumber" }]
+        filters: [{ name: "parseNumber" }],
       },
       comments: {
         selector: "> td:nth-child(5)",
         filters: [(q: string) => q.replace(/Go ?to ?comments/, "")],
       },
-      tags: [
-        { name: "Free", selector: "span.free" },
-        { name: "Free", selector: "span.t_tag_free_leech" }
-      ]
+      tags: [{ name: "Free", selector: "span.free, span.t_tag_free_leech" }],
+    },
+  },
+
+  list: [
+    {
+      urlPattern: ["/t"],
+      excludeUrlPattern: ["/t/\\d+", "/torrent\\.php\\?id=\\d+"],
+      selectors: {
+        title: {
+          selector: " > td.al > a",
+          elementProcess: (el: HTMLElement) => {
+            el.querySelectorAll("div.tTip").forEach((e) => e.remove());
+            return el.innerText || el.textContent;
+          },
+        },
+      },
+    },
+    {
+      urlPattern: ["/indexipt\\.php"],
+      selectors: {
+        size: {
+          selector: "div.ar.c3",
+          filters: [{ name: "split", args: ["|", 0] }, { name: "trim" }, { name: "parseSize" }],
+        },
+        time: {
+          selector: "span.elapsedDate",
+          attr: "title",
+          filters: [{ name: "parseTime", args: ["EEEE, MMMM d, yyyy 'at' h:mmaa"] }],
+        },
+        seeders: { selector: "> td:nth-child(5)" },
+        leechers: { selector: "> td:nth-child(6)" },
+        completed: { selector: "> td:nth-child(7)" },
+        comments: { selector: "> td:nth-child(8)" },
+        // TODO category 需要映射类型编号
+      },
+    },
+  ],
+
+  detail: {
+    urlPattern: ["/t/\\d+", "/torrent\\.php\\?id=\\d+"],
+    selectors: {
+      title: { selector: "div.dBox > h2" },
+      link: { selector: "div.info a[href*='download.php']", attr: "href" },
     },
   },
 
@@ -321,68 +320,82 @@ export const siteMetadata: ISiteMetadata = {
         assertion: { id: "params.u" },
         selectors: {
           messageCount: {
+            text: 0,
             selector: ["td[style*='background: red'] a[href*='messages.php']"],
             filters: [{ name: "parseNumber" }],
           },
-          name: {
-            selector: "h1.c0",
-          },
+          name: { selector: "h1.up-username" },
           uploaded: {
-            selector: createTableFieldSelector('Uploaded'),
-            filters: [parseIPTorrentsStats],
+            selector: "div[style*='up-stat-up'] ~ div.up-stat-sub",
+            filters: [{ name: "parseNumber" }], // 1234567890 B
           },
           downloaded: {
-            selector: createTableFieldSelector('Downloaded'),
-            filters: [parseIPTorrentsStats],
+            selector: "div[style*='up-stat-down'] ~ div.up-stat-sub",
+            filters: [{ name: "parseNumber" }],
           },
           ratio: {
-            selector: createTableFieldSelector('Share ratio'),
-            filters: [{ name: "parseNumber" }]
+            selector: "div.up-stat-value:has(svg.up-ratio-icon) > span",
+            filters: [{ name: "parseNumber" }],
           },
-          levelName: {
-            selector: "th:contains('Class') + td",
-          },
+          levelName: { selector: "span.up-class-badge" },
           bonus: {
             selector: "a[href='/mybonus.php']",
             filters: [{ name: "parseNumber" }],
           },
           joinTime: {
-            selector: "th:contains('Join date') + td",
-            filters: [(query: string) => query.split(" (")[0], { name: "parseTime" }]
+            selector: "span.up-field-label:contains('Join Date') + span span.elapsedDate",
+            attr: "title",
+            filters: [{ name: "parseTime", args: ["EEEE, MMMM d, yyyy 'at' h:mmaa"] }],
+          },
+          lastAccessAt: {
+            selector: "span.up-field-label:contains('Last Seen') + span span.elapsedDate",
+            attr: "title",
+            filters: [{ name: "parseTime", args: ["EEEE, MMMM d, yyyy 'at' h:mmaa"] }],
           },
           seeding: {
-            selector: "th:contains('Seeding') + td",
+            selector: "span.up-field-label:contains('Seeding') + span a[href^='/peers']",
             filters: [{ name: "parseNumber" }],
           },
-          seedingSize: {
-            selector: "body",
-            filters: [() => "N/A"]
-          },
+          uploads: { selector: "span a[href^='/t?u=']" },
+          seedingSize: { text: "N/A" },
           invites: {
-            selector: [
-              "th:contains('Invites') + td",
-              "tr:has(th:contains('Invites')) td",
-              "td:contains('Available:')",
-              "th:contains('Available') + td",
-              "td:contains('Available')",
-              "tr:contains('Available') td:last-child"
-            ],
-            filters: [parseIPTorrentsInvites]
-          },
-          warned: {
-            selector: createTableFieldSelector('Warned'),
+            text: 0,
+            selector: ["a.tTipWrap[href='/invite.php'] > b"],
             filters: [{ name: "parseNumber" }],
           },
-          disabled: {
-            selector: createTableFieldSelector('Disabled'),
-            filters: [{ name: "parseNumber" }],
+          isDonor: {
+            text: false,
+            selector: "h1.up-username > img[alt='Donor']",
+            elementProcess: () => true,
           },
-          lastSeen: {
-            selector: createTableFieldSelector('Last seen'),
-            filters: [{ name: "parseTime" }]
-          }
         },
       },
     ],
   },
+
+  levelRequirements: [
+    {
+      id: 0,
+      name: "Peasant",
+    },
+    {
+      id: 1,
+      name: "User",
+    },
+    {
+      id: 2,
+      name: "Power User",
+      interval: "P4W",
+      uploaded: "50GB",
+      downloaded: "5GB", // 官网未列出
+      ratio: 1.05,
+      privilege: "Are able to make requests for torrents, view the Top 10, and apply for Uploader status.",
+    },
+    {
+      id: 3,
+      name: "VIP",
+      groupType: "vip",
+      privilege: "Immune from H&R.",
+    },
+  ],
 };

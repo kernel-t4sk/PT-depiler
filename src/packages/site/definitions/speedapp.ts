@@ -1,5 +1,22 @@
-import type { ISiteMetadata, ISearchEntryRequestConfig, ISearchResult } from "../types.ts";
+import type {
+  ISiteMetadata,
+  ISearchEntryRequestConfig,
+  ISearchResult,
+  ITorrent,
+  IUserInfo,
+  TLevelId,
+} from "../types.ts";
 import PrivateSite from "../schemas/AbstractPrivateSite.ts";
+import { buildCategoryOptionsFromDict } from "../utils.ts";
+
+const bonusTrans: string[] = ["Bonus points", "奖励积分"];
+const seedingTrans: string[] = ["Currently seeding torrents", "目前正在播种种子"];
+const joinTimeTrans: string[] = ["Signup date", "注册日期"];
+const averageSeedingTimeTrans: string[] = ["Average seed time", "平均种子时间"];
+const uploadedTrans: string[] = ["Uploaded", "已上传"];
+const downloadedTrans: string[] = ["Downloaded", "已下载"];
+const ratioTrans: string[] = ["Ratio", "分享率", "比率"];
+const lastAccessAtTrans: string[] = ["Last access", "上次访问"];
 
 const categoryMapXXX: Record<number, string> = {
   15: "XXX Movies",
@@ -53,7 +70,7 @@ const categoryMapNormal: Record<number, string> = {
 const categoryMap = { ...categoryMapNormal, ...categoryMapXXX };
 
 export const siteMetadata: ISiteMetadata = {
-  version: 1,
+  version: 2,
   id: "speedapp",
   name: "SpeedApp",
   description: "SpeedApp is a ROMANIAN Private Torrent Tracker for MOVIES / TV / GENERAL",
@@ -65,28 +82,31 @@ export const siteMetadata: ISiteMetadata = {
 
   urls: ["uggcf://fcrrqncc.vb/"],
 
-  formerHosts: ["icetorrent.org", "scenefz.me", "u-torrents.ro", "myxz.eu"],
+  legacyUrls: ["https://icetorrent.org/", "https://scenefz.me/", "https://u-torrents.ro/", "https://myxz.eu/"],
 
   // 这里除了 categories 其它均为自定义 key，需要在自定义站点方法中统一处理
   category: [
     {
+      name: "搜索入口",
+      key: "#url",
+      options: [
+        { name: "综合", value: "/browse" },
+        { name: "成人", value: "/adult" },
+      ],
+    },
+    {
       name: "Categories",
       key: "categories_normal",
-      options: Object.entries(categoryMapNormal).map(([value, name]) => ({ name, value })),
+      notes: "请先设置分类入口为“综合”！请勿与 成人 区类别同时选择！",
+      options: buildCategoryOptionsFromDict(categoryMapNormal),
       cross: { key: "categories", mode: "brackets" },
     },
     {
       name: "Categories (Adult)",
       key: "categories_xxx",
-      options: Object.entries(categoryMapXXX).map(([value, name]) => ({ name, value })),
-      cross: { mode: "custom" },
-      generateRequestConfig: (selectedOptions) => {
-        const params: Record<string, any> = { categories: [] };
-        (selectedOptions as number[]).forEach((value) => {
-          params.categories.push(value);
-        });
-        return { requestConfig: { url: "/adult", params } };
-      },
+      notes: "请先设置分类入口为“成人”！请勿与 综合 区类别同时选择！",
+      options: buildCategoryOptionsFromDict(categoryMapXXX),
+      cross: { key: "categories", mode: "brackets" },
     },
     {
       name: "Resolution",
@@ -285,20 +305,28 @@ export const siteMetadata: ISiteMetadata = {
     },
     selectors: {
       rows: { selector: "div.row.mr-0.ml-0.py-3" },
-      title: { selector: ["a:not([class])[href^='/browse/']"] },
-      url: { selector: ["a:not([class])[href^='/browse/']"], attr: "href" },
-      link: { selector: "a.btn.btn-success", attr: "href" },
+      title: { selector: "div:nth-child(2) > a[href^='/browse/']:first-child" },
+      url: { selector: "div:nth-child(2) > a[href^='/browse/']:first-child", attr: "href" },
+      link: { selector: "a.btn[href^='/torrents/']", attr: "href" },
       category: {
-        selector: "a[href^='/browse?categories']",
+        selector: "a[href*='?categories']",
         attr: "href",
         filters: [{ name: "split", args: ["=", 1] }, (catID: number) => categoryMap[catID]],
       },
       size: { selector: "> div:nth-child(4)", filters: [{ name: "parseSize" }] },
       comments: { selector: "a[href$='#comments_content']", filters: [{ name: "parseNumber" }] },
-      seeders: { selector: "span:contains('seeders')", filters: [{ name: "parseNumber" }] },
-      leechers: { selector: "span:contains('leechers')", filters: [{ name: "parseNumber" }] },
+      seeders: { selector: "span.text-success", filters: [{ name: "parseNumber" }] },
+      leechers: { selector: "span.text-danger", filters: [{ name: "parseNumber" }] },
       completed: { selector: "> div:nth-child(3)", filters: [{ name: "parseNumber" }] },
-      time: { selector: "> div:nth-child(2)", attr: "title", filters: [{ name: "parseTime" }] },
+      time: {
+        selector: "> div:nth-child(2)",
+        attr: "title",
+        filters: [
+          { name: "replace", args: [/日/g, " "] },
+          { name: "replace", args: [/[年月]/g, "-"] },
+          { name: "parseTime" },
+        ],
+      },
       tags: [
         {
           name: "Free",
@@ -317,12 +345,25 @@ export const siteMetadata: ISiteMetadata = {
     },
   },
 
+  searchEntry: {
+    area_normal: { name: "综合", requestConfig: { url: "/browse" } },
+    area_adult: { name: "成人", enabled: false, requestConfig: { url: "/adult" } },
+  },
+
   list: [
     {
       urlPattern: [/\/(browse|internal|adult)(\?.*)?$/],
       mergeSearchSelectors: true,
       selectors: {
-        time: { selector: "> div:nth-child(2)", data: "originalTitle", filters: [{ name: "parseTime" }] },
+        time: {
+          selector: "> div:nth-child(2)",
+          data: "originalTitle",
+          filters: [
+            { name: "replace", args: [/日/g, " "] },
+            { name: "replace", args: [/[年月]/g, "-"] },
+            { name: "parseTime" },
+          ],
+        },
       },
     },
   ],
@@ -346,22 +387,42 @@ export const siteMetadata: ISiteMetadata = {
         selectors: {
           name: { selector: "#kt_quick_user_toggle > span.text-dark-50" },
           messageCount: { selector: "#notifications-oc-toggle > div.btn > .label-danger" },
-          uploaded: { selector: "dt:contains('Uploaded') + dd", filters: [{ name: "parseSize" }] },
-          downloaded: { selector: "dt:contains('Downloaded') + dd", filters: [{ name: "parseSize" }] },
+          // 上传权限需要申请
+          uploads: {
+            text: 0,
+          },
+          uploaded: {
+            selector: uploadedTrans.map((x) => `dt:contains('${x}') + dd`),
+            filters: [{ name: "parseSize" }],
+          },
+          downloaded: {
+            selector: downloadedTrans.map((x) => `dt:contains('${x}') + dd`),
+            filters: [{ name: "parseSize" }],
+          },
           ratio: {
-            selector: "dt:contains('Ratio') + dd",
+            selector: ratioTrans.map((x) => `dt:contains('${x}') + dd`),
             filters: [{ name: "replace", args: [/[,|\s]/g, ""] }, { name: "parseNumber" }],
           },
           levelName: {
             selector: "div.card-body.pt-4 >div.align-items-center div.text-muted",
             filters: [{ name: "trim" }],
           },
-          joinTime: { selector: "dt:contains('Signup date') + dd", filters: [{ name: "parseTime" }] },
+          joinTime: {
+            selector: joinTimeTrans.map((x) => `dt:contains('${x}') + dd`),
+            filters: [{ name: "parseTime", args: ["yyyy年M月d日 HH:mm:ss"] }],
+          },
+          lastAccessAt: {
+            selector: lastAccessAtTrans.map((x) => `dt:contains('${x}') + dd`),
+            filters: [{ name: "parseTime", args: ["yyyy年M月d日 HH:mm:ss"] }],
+          },
           seedingSize: {
-            selector: "dt:contains('Bonus points') + dd > b:nth-of-type(2)",
+            selector: bonusTrans.map((x) => `dt:contains('${x}') + dd > b:nth-of-type(2)`),
             filters: [{ name: "replace", args: [/[,|\s]/g, ""] }, { name: "parseSize" }],
           },
-          bonusPerHour: { selector: "dt:contains('Bonus points') + dd > b:eq(0)", filters: [{ name: "parseNumber" }] },
+          bonusPerHour: {
+            selector: bonusTrans.map((x) => `dt:contains('${x}') + dd > b:eq(0)`),
+            filters: [{ name: "parseNumber" }],
+          },
         },
       },
       {
@@ -371,11 +432,23 @@ export const siteMetadata: ISiteMetadata = {
         },
         selectors: {
           bonus: {
-            selector: "a[href='/shop'][title='Bonus points']",
+            selector: bonusTrans.map((x) => `a[href='/shop'][title='${x}']`),
             filters: [{ name: "replace", args: [/[,|\s]/g, ""] }, { name: "parseNumber" }],
           },
           seeding: {
-            selector: "a[href='/snatch/seeding'][title='Currently seeding torrents']",
+            selector: seedingTrans.map((x) => `a[href='/snatch/seeding'][title='${x}']`),
+            filters: [{ name: "parseNumber" }],
+          },
+          averageSeedingTime: {
+            selector: averageSeedingTimeTrans.map((x) => `a[href='/snatch/seeding'][title='${x}']`),
+            filters: [{ name: "replace", args: ["个", ""] }, { name: "parseDuration" }],
+          },
+          hnrUnsatisfied: {
+            selector: "a[href='/snatch/need-seed']",
+            filters: [{ name: "parseNumber" }],
+          },
+          hnrPreWarning: {
+            selector: "a[href='/snatch/hit-and-run']",
             filters: [{ name: "parseNumber" }],
           },
         },
@@ -387,10 +460,12 @@ export const siteMetadata: ISiteMetadata = {
     {
       id: 1,
       name: "Peasant",
+      nameAka: ["农民"],
     },
     {
       id: 2,
       name: "User",
+      nameAka: ["用户"],
       interval: "P30D",
       uploaded: "25GB",
       ratio: 1.05,
@@ -399,6 +474,7 @@ export const siteMetadata: ISiteMetadata = {
     {
       id: 3,
       name: "Power User",
+      nameAka: ["超级用户"],
       interval: "P90D",
       uploaded: "200GB",
       ratio: 2,
@@ -407,6 +483,7 @@ export const siteMetadata: ISiteMetadata = {
     {
       id: 4,
       name: "Elite User",
+      nameAka: ["精英用户"],
       interval: "P180D",
       uploaded: "1TB",
       ratio: 3,
@@ -415,6 +492,7 @@ export const siteMetadata: ISiteMetadata = {
     {
       id: 5,
       name: "Xtreme User",
+      nameAka: ["极端用户"],
       interval: "P12M",
       uploaded: "5TB",
       ratio: 4,
@@ -423,6 +501,7 @@ export const siteMetadata: ISiteMetadata = {
     {
       id: 6,
       name: "Super User",
+      nameAka: ["超级用户"],
       interval: "P2Y",
       uploaded: "20TB",
       ratio: 5,
@@ -431,6 +510,7 @@ export const siteMetadata: ISiteMetadata = {
     {
       id: 7,
       name: "Legend User",
+      nameAka: ["传奇用户"],
       interval: "P6Y",
       uploaded: "100TB",
       ratio: 6,
@@ -439,12 +519,27 @@ export const siteMetadata: ISiteMetadata = {
     {
       id: 8,
       name: "VIP",
+      nameAka: ["贵宾"],
+      groupType: "vip",
       privilege: "Same privileges as Elite User, immune to automated HnR warnings.",
     },
   ],
 };
 
 export default class SpeedApp extends PrivateSite {
+  protected override guessUserLevelId(userInfo: IUserInfo): TLevelId {
+    if (userInfo.levelName === "超级用户" && typeof userInfo.uploaded === "number") {
+      // 区分 SpeedApp 中同名中文级别的特征，Super User (20TB) vs Power User (200GB)
+      const uploadedTB = userInfo.uploaded / (1024 * 1024 * 1024 * 1024);
+      if (uploadedTB >= 20) {
+        return 6; // Super User
+      } else {
+        return 3; // Power User
+      }
+    }
+    return super.guessUserLevelId(userInfo);
+  }
+
   /**
    * SpeedApp 搜索方法
    * 适配 SpeedApp 高级搜索多个分类共用 tags 参数的情况
@@ -473,5 +568,18 @@ export default class SpeedApp extends PrivateSite {
     }
 
     return super.getSearchResult(keywords, searchEntry);
+  }
+
+  public override async getTorrentDownloadLink(torrent: ITorrent): Promise<string> {
+    const downloadLink = await super.getTorrentDownloadLink(torrent);
+    if (downloadLink && !downloadLink.includes("/torrents/")) {
+      const { data: detailDocument } = await this.request<Document>({
+        url: downloadLink,
+        responseType: "document",
+      });
+      return this.getFieldData(detailDocument, this.metadata.search?.selectors?.link!);
+    }
+
+    return downloadLink;
   }
 }

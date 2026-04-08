@@ -94,6 +94,8 @@ export const siteMetadata: ISiteMetadata = {
     CategoryInclbookmarked,
   ],
 
+  officialGroupPattern: [/(-PTLGS|.*@PTLGS)/i],
+
   userInfo: {
     ...SchemaMetadata.userInfo!,
     selectors: {
@@ -155,6 +157,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "2TB",
       ratio: 1.2,
       seedingBonus: 500000,
+      isKept: true,
       privilege: "得到一个邀请名额；可以查看其它用户的评论、帖子历史。Veteran User及以上用户会永远保留账号。",
     },
     {
@@ -163,6 +166,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "3TB",
       ratio: 1.5,
       seedingBonus: 800000,
+      isKept: true,
       privilege: "可以更新过期的外部信息；可以查看Extreme User论坛。",
     },
     {
@@ -171,6 +175,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "4TB",
       ratio: 1.5,
       seedingBonus: 1000000,
+      isKept: true,
       privilege: "得到一个邀请名额。",
     },
     {
@@ -179,6 +184,7 @@ export const siteMetadata: ISiteMetadata = {
       downloaded: "5TB",
       ratio: 1.5,
       seedingBonus: 2500000,
+      isKept: true,
       privilege: "得到一个邀请名额。",
     },
     {

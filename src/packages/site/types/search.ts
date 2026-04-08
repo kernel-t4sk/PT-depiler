@@ -3,8 +3,9 @@
 import type { AxiosRequestConfig } from "axios";
 import type { TSupportSocialSite$1 } from "@ptd/social";
 import type { EResultParseStatus } from "./base";
-import type { ITorrent, TBaseTorrentTagName } from "./torrent";
+import type { ITorrent } from "./torrent";
 import type { TQueryFilter } from "../utils/filter";
+import type { TPreDefinedTorrentTagName } from "../utils/tags";
 
 export type TAdvanceSearchKeyword = TSupportSocialSite$1 | string;
 
@@ -120,7 +121,7 @@ export interface ISearchConfig extends IBaseSearchConfig {
      */
     rows?: {
       selector: string | ":self" | string[];
-      filter?: <T>(rows: T) => T;
+      filter?: (rows: any) => any;
       merge?: number;
     };
   } & {
@@ -133,7 +134,7 @@ export interface ISearchConfig extends IBaseSearchConfig {
      * 对于种子的 tags 属性，如果对应 selector 存在，则认为对应tag存在
      */
     tags?: {
-      name: TBaseTorrentTagName;
+      name: string | TPreDefinedTorrentTagName;
       selector: string;
       color?: string;
     }[];
@@ -252,7 +253,7 @@ export interface IElementQuery {
    * 特殊值：
    * - N/A 表示源站并没有提供该信息
    */
-  text?: string | number | "N/A";
+  text?: string | number | boolean | "N/A";
 
   /**
    * 如果selector为 string[]， 则会依次尝试并找到第一个成功获取到有效信息的
@@ -262,9 +263,11 @@ export interface IElementQuery {
   selector?: string | ":self" | string[] | null;
 
   /**
-   * 如果是html文档，则提供了4种Element的处理方法（如果不做定义，则直接返回 innerText），
+   * 如果是html文档，则提供了4种Element的处理方法，
    * 这四种方法互斥，优先级依次为：elementProcess > case > data > attr ,
-   * 如果不做定义，则直接返回 innerText
+   * 如果不做定义，则直接返回 innerText ?? textContent
+   *
+   * 对返回的结果，可以应用 filters 或 switchFilters 进行后续处理
    */
 
   // 对 selector 出来的 Element 进行自定义处理，此时不建议再定义 filters 或 switchFilters 以免出错
@@ -276,6 +279,8 @@ export interface IElementQuery {
   data?: string | null;
   // 使用 HTMLElement.getAttribute('') 进行取值，取不到值则置 ''
   attr?: "title" | "href" | string | null;
+
+  // 如果是json文档，则需要直接应用 filters 或 switchFilters 进行处理
 
   /**
    * 对获取结果进行处理，处理结果将作为最终的值输出
@@ -289,5 +294,11 @@ export interface IElementQuery {
 
 export interface ISearchResult {
   status: EResultParseStatus;
+  /**
+   * 额外的状态信息
+   * 如果字段以 i18n.{string} 开头，则
+   *  - 在搜索状态窗口中会对应替换为 SearchEntity.SearchStatusDialog.statusMsg.{string} 对应的i18n字段
+   */
+  statusMsg?: `i18n.${string}` | string;
   data: ITorrent[];
 }

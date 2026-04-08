@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { ref, shallowRef } from "vue";
+import { useI18n } from "vue-i18n";
 import type { CAddTorrentOptions } from "@ptd/downloader";
 
 import { sendMessage } from "@/messages.ts";
 import { useResetableRef } from "@/options/directives/useResetableRef.ts";
 import type { ITorrentDownloadMetadata } from "@/shared/types.ts";
 
-import SentToDownloaderDialog from "@/options/components/SentToDownloaderDialog.vue";
+import SentToDownloaderDialog from "@/options/components/SentToDownloaderDialog/Index.vue";
+
+const { t } = useI18n();
 
 const showDialog = defineModel<boolean>();
 const emit = defineEmits<{
@@ -30,9 +33,9 @@ const showSentToDownloaderDialog = ref<boolean>(false);
 const downloadTorrentsRef = shallowRef<ITorrentDownloadMetadata["torrent"][]>([]);
 
 const btnItem: Record<TReDownloadType, { icon: string; color: string; title: string }> = {
-  old: { icon: "mdi-reload", color: "indigo", title: "按原下载方式重试" },
-  local: { icon: "mdi-content-save", color: "orange", title: "本地下载" },
-  downloader: { icon: "mdi-cloud-download", color: "cyan", title: "选择下载服务器" },
+  old: { icon: "mdi-reload", color: "indigo", title: t("DownloadHistory.ReDownloadSelectDialog.oldMethod") },
+  local: { icon: "mdi-content-save", color: "orange", title: t("downloaderLabel.localDownload") },
+  downloader: { icon: "mdi-cloud-download", color: "cyan", title: t("DownloadHistory.ReDownloadSelectDialog.selectDownloader") },
 };
 
 function submitDownloadFinish(reDownloadType: TReDownloadType) {
@@ -55,10 +58,10 @@ function reDownload(reDownloadType: TReDownloadType) {
       if (history) {
         const historyTorrent = history.torrent;
         if (reDownloadType === "local" || history.downloaderId === "local") {
-          promises.push(sendMessage("downloadTorrentToLocalFile", { torrent: historyTorrent }));
+          promises.push(sendMessage("downloadTorrent", { torrent: historyTorrent, downloaderId: "local" }));
         } else {
           promises.push(
-            sendMessage("downloadTorrentToDownloader", {
+            sendMessage("downloadTorrent", {
               torrent: historyTorrent,
               downloaderId: history.downloaderId,
               addTorrentOptions: (history.addTorrentOptions ?? {}) as CAddTorrentOptions,
@@ -87,9 +90,9 @@ function dialogEnter() {
     <v-card>
       <v-card-title class="pa-0">
         <v-toolbar color="primary">
-          <v-toolbar-title>重新下载 {{ torrentItems.length }} 条记录</v-toolbar-title>
+          <v-toolbar-title>{{ t("DownloadHistory.ReDownloadSelectDialog.title", [torrentItems.length]) }}</v-toolbar-title>
           <template #append>
-            <v-btn icon="mdi-close" @click="showDialog = false" />
+            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
           </template>
         </v-toolbar>
       </v-card-title>

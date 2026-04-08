@@ -4,7 +4,7 @@ import { useI18n } from "vue-i18n";
 import { cloneDeep, omit } from "es-toolkit";
 import { saveAs } from "file-saver";
 import { nanoid } from "nanoid";
-import type { DataTableHeader } from "vuetify/lib/components/VDataTable/types";
+import type { DataTableHeader } from "vuetify";
 
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
@@ -149,7 +149,10 @@ async function copySearchSolution(solutionId: TSolutionKey) {
     }
   }
 
-  const newSearchSolutionName = prompt("请输入新搜索方案名称", `Copy of ${copied.name ?? copied.id}`);
+  const newSearchSolutionName = prompt(
+    t("SetSearchSolution.newSolutionNamePrompt"),
+    `Copy of ${copied.name ?? copied.id}`,
+  );
   if (newSearchSolutionName) {
     copied.name = newSearchSolutionName;
     await metadataStore.addSearchSolution(copied);
@@ -188,14 +191,14 @@ async function copySearchSolution(solutionId: TSolutionKey) {
         <NavButton
           color="info"
           icon="mdi-import"
-          :text="t('SetSearchSolution.import')"
+          :text="t('common.import')"
           @click="() => importFileInputRef?.click()"
         />
         <NavButton
           :disabled="tableSelected.length === 0"
           color="info"
           icon="mdi-export"
-          :text="t('SetSearchSolution.export')"
+          :text="t('common.export')"
           @click="() => exportSearchSolutions(tableSelected)"
         />
 
@@ -237,6 +240,7 @@ async function copySearchSolution(solutionId: TSolutionKey) {
       show-select
       @update:itemsPerPage="(v) => configStore.updateTableBehavior('SetSearchSolution', 'itemsPerPage', v)"
     >
+      <!-- 这里预设一个固定的默认搜索方案 -->
       <template #body.prepend>
         <tr class="v-data-table__tr">
           <td class="v-data-table__td" colspan="2"></td>
@@ -313,7 +317,7 @@ async function copySearchSolution(solutionId: TSolutionKey) {
             @click="() => editSearchSolution(item.id)"
           />
           <v-btn
-            :title="t('SetSearchSolution.export')"
+            :title="t('common.export')"
             size="small"
             color="info"
             icon="mdi-export"

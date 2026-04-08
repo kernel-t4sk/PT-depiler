@@ -2,6 +2,7 @@
 import { ref, computed, shallowRef, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { toMerged } from "es-toolkit";
+
 import { type ITorrent } from "@ptd/site";
 import {
   type CAddTorrentOptions,
@@ -9,16 +10,17 @@ import {
   getDownloaderMetaData,
 } from "@ptd/downloader";
 
-import { sendMessage } from "@/messages.ts";
-import { formatDate } from "@/options/utils.ts";
 import { useRuntimeStore } from "@/options/stores/runtime.ts";
 import { useMetadataStore } from "@/options/stores/metadata.ts";
 import { useConfigStore } from "@/options/stores/config.ts";
 import type { IDownloaderMetadata } from "@/shared/types.ts";
 
+import { sendTorrentToDownloader } from "./utils.ts";
+
 const showDialog = defineModel<boolean>();
-const { torrentItems } = defineProps<{
+const { torrentItems, isDefaultSend } = defineProps<{
   torrentItems: ITorrent[];
+  isDefaultSend?: boolean;
 }>();
 const emit = defineEmits<{
   (e: "cancel"): void;
@@ -67,12 +69,12 @@ watch(selectedDownloader, (value) => {
 
 async function sendToDownloader() {
   if (!selectedDownloader.value?.id) {
-    runtimeStore.showSnakebar("请先选择下载器", { color: "error" });
+    runtimeStore.showSnakebar(t("SentToDownloaderDialog.selectDownloaderFirst"), { color: "error" });
     return;
   }
 
-  // 保存此次选择记录
-  if (configStore.download.saveLastDownloader) {
+  // 保存此次选择记录（默认推送不保存）
+  if (!isDefaultSend && configStore.download.saveLastDownloader) {
     // noinspection ES6MissingAwait
     metadataStore.setLastDownloader({
       id: selectedDownloader.value.id,
@@ -81,97 +83,12 @@ async function sendToDownloader() {
   }
 
   isSending.value = true;
-  const promises = [];
 
-  const customReplace = {
-    savePath: undefined,
-    label: undefined,
-  } as Record<string, string | undefined>;
-
-  for (const torrent of torrentItems) {
-    const realAddTorrentOptions: Partial<CAddTorrentOptions> = { ...addTorrentOptions.value };
-
-    const nowDate = new Date();
-    const replaceMap: Record<string, string> = {
-      "torrent.site": torrent.site,
-      "torrent.siteName": await metadataStore.getSiteName(torrent.site),
-      "torrent.category": (torrent.category as string) ?? "",
-      "search:keyword": runtimeStore.search.searchKey,
-      "search:plan": metadataStore.getSearchSolutionName(runtimeStore.search.searchPlanKey),
-      "date:YYYY": formatDate(nowDate, "yyyy") as string,
-      "date:MM": formatDate(nowDate, "MM") as string,
-      "date:DD": formatDate(nowDate, "dd") as string,
-    };
-
-    for (const key of ["savePath", "label"] as (keyof typeof realAddTorrentOptions)[]) {
-      if (realAddTorrentOptions[key]) {
-        if (realAddTorrentOptions[key] === "") {
-          delete realAddTorrentOptions[key];
-        } else {
-          for (const [replaceKey, value] of Object.entries(replaceMap)) {
-            // @ts-ignore
-            realAddTorrentOptions[key] = (realAddTorrentOptions[key]! as string).replace(`$${replaceKey}$`, value);
-          }
-
-          // 处理自定义输入
-          if ((realAddTorrentOptions[key] as string).includes("<...>")) {
-            // 如果之前已经输入过，则直接使用之前的输入
-            if (typeof customReplace[key] !== "string") {
-              // 此处允许空字符 ""， 但不允许用户取消（即取消动态替换操作则认为取消推送任务）
-              const userInput = prompt(`请输入替换 ${key} 中的 <...> 的内容：`);
-              if (userInput !== null) {
-                customReplace[key] = userInput.trim();
-              } else {
-                // 用户取消输入，则跳过该任务
-                runtimeStore.showSnakebar(`因取消输入 ${key} 中的 <...> 的内容而停止推送`, { color: "warning" });
-                isSending.value = false;
-                return;
-              }
-            }
-
-            // @ts-ignore
-            realAddTorrentOptions[key] = (realAddTorrentOptions[key] as string).replace("<...>", customReplace[key]!);
-          }
-        }
-      }
-    }
-
-    promises.push(
-      sendMessage("downloadTorrentToDownloader", {
-        torrent,
-        downloaderId: selectedDownloader.value?.id!,
-        addTorrentOptions: realAddTorrentOptions as CAddTorrentOptions,
-      }).catch((x) => {
-        runtimeStore.showSnakebar(`[${torrent.title}] 发送到下载器失败！错误信息： ${x}`, { color: "error" });
-      }),
-    );
-  }
-
-  Promise.all(promises)
-    .then((status) => {
-      if (status.length > 0) {
-        const pendingCount = status.filter((x) => x?.downloadStatus === "pending").length;
-        const failedCount = status.filter((x) => x?.downloadStatus === "failed").length;
-        const color = failedCount > 0 ? "warning" : "success";
-
-        runtimeStore.showSnakebar(
-          `成功发送 ${status.length - failedCount} 个任务到下载器` +
-            (pendingCount > 0 ? `（${pendingCount}在下载队列中）` : "") +
-            (failedCount > 0 ? `，有 ${failedCount} 个任务发送失败` : ""),
-          { color },
-        );
-      } else {
-        runtimeStore.showSnakebar("似乎并没有任务发送到下载器", { color: "warning" });
-      }
-    })
-    .catch((x) => {
-      runtimeStore.showSnakebar("有任务发送到下载器失败，请在下载历史页面重试", { color: "error" });
-    })
-    .finally(() => {
-      isSending.value = false;
-      showDialog.value = false;
-      emit("done");
-    });
+  sendTorrentToDownloader(torrentItems, selectedDownloader.value.id, addTorrentOptions.value).finally(() => {
+    isSending.value = false;
+    showDialog.value = false;
+    emit("done");
+  });
 }
 
 function quickSendToDownloader(downloader: IDownloaderMetadata, path: string = "", label?: string) {
@@ -193,23 +110,38 @@ function quickSendToDownloader(downloader: IDownloaderMetadata, path: string = "
 }
 
 function dialogEnter() {
-  restoreAddTorrentOptions(); // 先重置所有选项，然后如果需要则从uiStore中获取历史情况
-  quickSendToClient.value = configStore.download.useQuickSendToClient;
+  // 如果是默认下载发送，则直接设置为快速发送到客户端模式
+  if (isDefaultSend) {
+    const downloader = metadataStore.downloaders[metadataStore.defaultDownloader.id!];
+    restoreAddTorrentOptions(downloader);
+    quickSendToClient.value = true;
 
-  // 如果不是快速发送到客户端模式，则尝试设置默认下载器
-  if (!quickSendToClient.value) {
-    const lastDownloaderId = metadataStore.lastDownloader?.id;
-    selectedDownloader.value = lastDownloaderId // 如果有上次选择的下载器，则直接使用
-      ? metadataStore.downloaders[lastDownloaderId]
-      : metadataStore.getEnabledDownloaders.length === 1 // 如果只有一个启用的下载器，则直接使用
-        ? metadataStore.getEnabledDownloaders[0]
-        : null;
+    // 加载默认下载器设置中的 folder, tags 信息
+    selectedDownloader.value = downloader;
+    addTorrentOptions.value.savePath = metadataStore.defaultDownloader.folder ?? "";
+    addTorrentOptions.value.label = metadataStore.defaultDownloader.tags ?? "";
 
-    // 将上一次的下载器选项通过 toMerged 合并到当前选项中，而不是直接覆盖
-    addTorrentOptions.value = toMerged(
-      addTorrentOptions.value,
-      metadataStore.lastDownloader?.options ?? {},
-    ) as Required<Omit<CAddTorrentOptions, "localDownloadOption">>;
+    // 直接调用发送函数
+    sendToDownloader();
+  } else {
+    restoreAddTorrentOptions(); // 先重置所有选项，然后如果需要则从uiStore中获取历史情况
+    quickSendToClient.value = configStore.download.useQuickSendToClient;
+
+    // 如果不是快速发送到客户端模式，则尝试设置默认下载器
+    if (!quickSendToClient.value) {
+      const lastDownloaderId = metadataStore.lastDownloader?.id;
+      selectedDownloader.value = lastDownloaderId // 如果有上次选择的下载器，则直接使用
+        ? metadataStore.downloaders[lastDownloaderId]
+        : metadataStore.getEnabledDownloaders.length === 1 // 如果只有一个启用的下载器，则直接使用
+          ? metadataStore.getEnabledDownloaders[0]
+          : null;
+
+      // 将上一次的下载器选项通过 toMerged 合并到当前选项中，而不是直接覆盖
+      addTorrentOptions.value = toMerged(
+        addTorrentOptions.value,
+        metadataStore.lastDownloader?.options ?? {},
+      ) as Required<Omit<CAddTorrentOptions, "localDownloadOption">>;
+    }
   }
 }
 
@@ -231,15 +163,19 @@ function dialogLeave() {
     <v-card>
       <v-card-title class="pa-0">
         <v-toolbar color="blue-grey-darken-2">
-          <v-toolbar-title> 为 {{ torrentItems.length }} 个种子选择下载器 </v-toolbar-title>
+          <v-toolbar-title>{{ t("SentToDownloaderDialog.title", [torrentItems.length]) }}</v-toolbar-title>
           <template #append>
-            <v-btn icon="mdi-close" @click="showDialog = false" />
+            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
           </template>
         </v-toolbar>
       </v-card-title>
 
       <v-card-text>
-        <v-form>
+        <v-alert v-if="isSending" type="info" variant="tonal">
+          {{ t("SentToDownloaderDialog.isSending", { name: selectedDownloader?.name, address: selectedDownloader?.address }) }}
+        </v-alert>
+
+        <v-form v-else>
           <!-- 快速下载选项 -->
           <v-container v-if="quickSendToClient" class="pa-0">
             <v-list v-if="metadataStore.getEnabledDownloaders.length > 0">
@@ -265,7 +201,7 @@ function dialogLeave() {
                 </v-list-item>
               </template>
             </v-list>
-            <v-alert v-else type="warning" variant="tonal"> 没有可用的下载器，请先在设置中添加下载器。 </v-alert>
+            <v-alert v-else type="warning" variant="tonal"> {{ t("SentToDownloaderDialog.noDownloader") }} </v-alert>
           </v-container>
 
           <!-- 普通下载选项 -->
@@ -276,7 +212,7 @@ function dialogLeave() {
                 :filter-keys="['raw.name', 'raw.address', 'raw.username']"
                 :items="metadataStore.getSortedEnabledDownloaders"
                 clearable
-                placeholder="选择下载器"
+                :placeholder="t('SentToDownloaderDialog.selectDownloader')"
                 @update:model-value="restoreAddTorrentOptions"
               >
                 <template #selection="{ item: { raw: downloader } }">
@@ -303,8 +239,8 @@ function dialogLeave() {
                 <v-combobox
                   v-model="addTorrentOptions.savePath"
                   :items="suggestFolders"
-                  hint="不设置则为该下载服务器的默认路径"
-                  label="保存路径"
+                  :hint="t('SentToDownloaderDialog.savePathHint')"
+                  :label="t('SentToDownloaderDialog.savePath')"
                   persistent-hint
                 >
                 </v-combobox>
@@ -313,8 +249,8 @@ function dialogLeave() {
                 <v-combobox
                   v-model="addTorrentOptions.label"
                   :items="suggestTags"
-                  hint="（如果该下载服务器支持）"
-                  label="种子标签"
+                  :hint="t('SentToDownloaderDialog.labelHint')"
+                  :label="t('SentToDownloaderDialog.label')"
                   persistent-hint
                 ></v-combobox>
               </v-col>
@@ -328,16 +264,11 @@ function dialogLeave() {
                   color="success"
                   :disabled="!configStore.download.allowDirectSendToClient"
                   hide-details
-                  label="本地中转"
-                ></v-switch>
+                  :label="t('SentToDownloaderDialog.localRelay')"
+                />
               </v-col>
               <v-col>
-                <v-switch
-                  v-model="addTorrentOptions.addAtPaused"
-                  color="success"
-                  hide-details
-                  label="添加时默认暂停"
-                ></v-switch>
+                <v-switch v-model="addTorrentOptions.addAtPaused" color="success" hide-details :label="t('SentToDownloaderDialog.pauseOnAdd')" />
               </v-col>
             </v-row>
             <v-row>
@@ -345,7 +276,7 @@ function dialogLeave() {
                 <v-expansion-panels
                   :disabled="!((selectedDownloaderMetadata?.advanceAddTorrentOptions ?? []).length > 0)"
                 >
-                  <v-expansion-panel title="高级设置">
+                  <v-expansion-panel :title="t('common.advancedSettings')">
                     <v-expansion-panel-text>
                       <v-switch
                         v-for="opt in selectedDownloaderMetadata.advanceAddTorrentOptions"
@@ -366,7 +297,7 @@ function dialogLeave() {
       </v-card-text>
       <v-divider />
       <v-card-actions>
-        <v-btn icon="mdi-cards" @click="quickSendToClient = !quickSendToClient" />
+        <v-btn :title="t('SentToDownloaderDialog.moreOptions')" icon="mdi-cards" @click="quickSendToClient = !quickSendToClient" />
 
         <v-spacer />
         <v-btn

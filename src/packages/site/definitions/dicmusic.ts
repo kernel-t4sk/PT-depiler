@@ -1,4 +1,4 @@
-import { buildCategoryOptions } from "../utils";
+import { buildCategoryOptionsFromList } from "../utils";
 import { type IUserInfo, type ITorrent, type ISiteMetadata } from "../types";
 import GazelleJSONAPI, {
   SchemaMetadata,
@@ -23,7 +23,7 @@ export const siteMetadata: ISiteMetadata = {
   schema: "GazelleJSONAPI",
 
   urls: ["uggcf://qvpzhfvp.pbz/"],
-  formerHosts: ["https://dicmusic.club"],
+  legacyUrls: ["https://dicmusic.club/"],
 
   category: [
     {
@@ -38,7 +38,7 @@ export const siteMetadata: ISiteMetadata = {
     {
       name: "编码",
       key: "encoding",
-      options: buildCategoryOptions([
+      options: buildCategoryOptionsFromList([
         "192",
         "APS (VBR)",
         "V2 (VBR)",
@@ -54,13 +54,23 @@ export const siteMetadata: ISiteMetadata = {
     {
       name: "格式",
       key: "format",
-      options: buildCategoryOptions(["FLAC", "WAV", "DSD", "MP3", "AAC", "DTS", "Lossless", "24bit Lossless", "Other"]),
+      options: buildCategoryOptionsFromList([
+        "FLAC",
+        "WAV",
+        "DSD",
+        "MP3",
+        "AAC",
+        "DTS",
+        "Lossless",
+        "24bit Lossless",
+        "Other",
+      ]),
       cross: false,
     },
     {
       name: "媒介",
       key: "media",
-      options: buildCategoryOptions([
+      options: buildCategoryOptionsFromList([
         "CD",
         "DVD",
         "Vinyl",
@@ -184,6 +194,7 @@ export const siteMetadata: ISiteMetadata = {
       uploaded: "25GiB",
       ratio: 1.05,
       uploads: 5,
+      isKept: true,
       privilege:
         "免疫账号不活跃；发送邀请，赠送1枚永久邀请；佩戴1枚印记；创建1个私人合集；访问「求邀区」「发邀区」「Power User」版块；完全访问排行榜",
     },
@@ -194,6 +205,7 @@ export const siteMetadata: ISiteMetadata = {
       uploaded: "75GiB",
       ratio: 1.05,
       uploads: 50,
+      isKept: true,
       privilege:
         "首次赠送1枚永久邀请；佩戴2枚印记；创建2个私人合集；访问「Elite」版块；检查自己的种子；编辑所有种子；购买「自定义头衔（不允许 BBCode）」",
     },
@@ -204,24 +216,29 @@ export const siteMetadata: ISiteMetadata = {
       uploaded: "200GiB",
       ratio: 1.05,
       uploads: 150,
+      isKept: true,
       privilege: "首次赠送2枚永久邀请；每月获赠 1 枚临时邀请；佩戴3枚印记；创建3个私人合集；访问「Torrent Master」版块",
     },
     {
       id: 6,
       name: "Power Torrent Master",
+      nameAka: ["Power TM"],
       interval: "P8W",
       uploaded: "200GiB",
       ratio: 1.05,
       uniqueGroups: 300,
+      isKept: true,
       privilege: "首次赠送2枚永久邀请；每月获赠 2 枚临时邀请；佩戴4枚印记；创建4个私人合集；能够检查所有种子",
     },
     {
       id: 7,
       name: "Elite Torrent Master",
+      nameAka: ["Elite TM"],
       interval: "P12W",
       uploaded: "600GiB",
       ratio: 1.05,
       perfectFlacs: 500,
+      isKept: true,
       privilege:
         "首次赠送3枚永久邀请；每月获赠 3 枚临时邀请；佩戴5枚印记；创建5个私人合集；访问「Elite Torrent Master」版块",
     },
@@ -232,6 +249,7 @@ export const siteMetadata: ISiteMetadata = {
       uploaded: "600GiB",
       ratio: 1.05,
       perfectFlacs: 500,
+      isKept: true,
       privilege: "首次赠送3枚永久邀请；每月获赠 3 枚临时邀请；能够在商城购买「自定义头衔（允许 BBCode）」",
     },
     {
@@ -240,6 +258,7 @@ export const siteMetadata: ISiteMetadata = {
       interval: "P16W",
       uploaded: "1.2TiB",
       ratio: 1.05,
+      isKept: true,
       perfectFlacs: 1000,
       privilege: "拥有无限邀请；佩戴6枚印记；创建6个私人合集；访问「Guru」版块；查看种子检查日志",
     },
@@ -333,7 +352,7 @@ export interface dicGroupTorrent extends groupTorrent {
 }
 
 export default class DICMusic extends GazelleJSONAPI {
-  protected override async getSeedingSize(userId?: number): Promise<Partial<IUserInfo>> {
+  protected override async getSeedingSize(userId: number, sizeIndex: number = 0): Promise<Partial<IUserInfo>> {
     await this.sleepAction(this.metadata.userInfo?.requestDelay);
 
     const { data: bonusPage } = await this.request<Document>({

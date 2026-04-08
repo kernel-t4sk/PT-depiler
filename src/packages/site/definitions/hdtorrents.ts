@@ -3,7 +3,7 @@
  * @JackettIssue https://github.com/Jackett/Jackett/issues/16002
  */
 import type { ISiteMetadata } from "../types.ts";
-import { definedFilters } from "../utils.ts";
+import { definedFilters, buildCategoryOptionsFromDict } from "../utils.ts";
 import urlJoin from "url-join";
 
 const categoryMap: Record<number, string> = {
@@ -65,7 +65,7 @@ export const siteMetadata: ISiteMetadata = {
     {
       name: "类别",
       key: "category",
-      options: Object.entries(categoryMap).map(([value, name]) => ({ name, value })),
+      options: buildCategoryOptionsFromDict(categoryMap),
       cross: { mode: "brackets" },
     },
     {
@@ -225,6 +225,10 @@ export const siteMetadata: ISiteMetadata = {
           },
           joinTime: {
             selector: "td.header:contains('Joined on') + td",
+            filters: [{ name: "parseTime", args: ["dd/MM/yyyy HH:mm:ss"] }],
+          },
+          lastAccessAt: {
+            selector: "td.header:contains('Last access') + td",
             filters: [{ name: "parseTime", args: ["dd/MM/yyyy HH:mm:ss"] }],
           },
           seeding: { selector: "td.nav[title='Active-Torrents'] > a[href*='#actives'] > span" },

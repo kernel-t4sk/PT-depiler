@@ -141,7 +141,7 @@ onMounted(async () => {
                     >
                       <!-- 增加一个代表默认的值，说明该类别什么都不选（尊重站点默认）。（不然的话，只能全部重置才能取消选择） -->
                       <v-col class="py-0" cols="12" lg="2" md="4" sm="6">
-                        <v-radio :label="'站点默认'" :value="radioDefault"></v-radio>
+                        <v-radio :label="t('SetSite.SiteCategoryPanel.siteDefault')" :value="radioDefault"></v-radio>
                       </v-col>
                       <v-col v-for="options in category.options" class="py-0" cols="12" lg="2" md="4" sm="6">
                         <v-radio :key="options.value" :label="options.name" :value="options.value" />
@@ -159,10 +159,17 @@ onMounted(async () => {
       </v-col>
       <v-col align-self="center">
         <v-row justify="end">
-          <v-btn color="red" icon="mdi-cached" variant="text" @click="() => resetSelectCategory()" />
+          <v-btn
+            :title="t('SetSearchSolution.spDialog.action.reset')"
+            color="red"
+            icon="mdi-cached"
+            variant="text"
+            @click="() => resetSelectCategory()"
+          />
         </v-row>
         <v-row justify="end">
           <v-btn
+            :title="t('SetSearchSolution.spDialog.action.create')"
             color="indigo"
             icon="mdi-pencil-plus"
             variant="text"
@@ -170,7 +177,13 @@ onMounted(async () => {
           ></v-btn>
         </v-row>
         <v-row justify="end">
-          <v-btn color="blue" icon="mdi-arrow-right-bold" variant="text" @click="() => generateSolution()" />
+          <v-btn
+            :title="t('SetSearchSolution.spDialog.action.add')"
+            color="blue"
+            icon="mdi-arrow-right-bold"
+            variant="text"
+            @click="() => generateSolution()"
+          />
         </v-row>
       </v-col>
     </v-row>

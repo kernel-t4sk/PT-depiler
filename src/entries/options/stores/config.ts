@@ -70,6 +70,7 @@ export const useConfigStore = defineStore("config", {
     contextMenus: {
       enabled: true,
       allowSelectionTextSearch: true,
+      allowSocialLinkSearch: true,
       allowLinkDownloadPush: true,
     },
 
@@ -83,6 +84,7 @@ export const useConfigStore = defineStore("config", {
       applyTheme: false,
       defaultOpenSpeedDial: false,
       stackedButtons: false,
+      fadeEnterStyle: false,
 
       doubleConfirmAction: true,
       dragLinkOnSpeedDial: true,
@@ -220,6 +222,7 @@ export const useConfigStore = defineStore("config", {
       showSocialInformation: true,
       socialInformationSearchOnNewTab: true,
       uploadAtFormatAsAlive: false,
+      limitTorrentTitleTdWidth: false,
     },
 
     userInfo: {
@@ -240,6 +243,7 @@ export const useConfigStore = defineStore("config", {
 
     download: {
       saveDownloadHistory: true,
+      startupAutoFetchDownloaderStatus: false,
       saveLastDownloader: false,
       allowDirectSendToClient: false,
       localDownloadMethod: "browser",
@@ -248,10 +252,15 @@ export const useConfigStore = defineStore("config", {
     },
 
     searchEntity: {
-      saveLastFilter: true,
       queueConcurrency: 8,
-      treatTTQueryAsImdbSearch: true,
+
       allowSingleSiteSearch: false,
+      treatTTQueryAsImdbSearch: true,
+
+      saveLastFilter: true,
+      forceImdbIdMatchFilter: true,
+      autoDetectOfficialGroupFromTitle: false,
+
       quickSiteFilter: true,
     },
 
@@ -276,6 +285,7 @@ export const useConfigStore = defineStore("config", {
         bangumi: {},
         douban: {},
         imdb: {},
+        tvmaze: {},
       },
     },
 

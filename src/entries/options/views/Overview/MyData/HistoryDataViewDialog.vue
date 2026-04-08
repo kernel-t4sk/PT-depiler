@@ -3,7 +3,7 @@ import { ref, shallowRef } from "vue";
 import { useI18n } from "vue-i18n";
 import { saveAs } from "file-saver";
 import { EResultParseStatus, type IUserInfo, type TSiteID } from "@ptd/site";
-import type { DataTableHeader } from "vuetify/lib/components/VDataTable/types";
+import type { DataTableHeader } from "vuetify";
 
 import { sendMessage } from "@/messages.ts";
 import { formatNumber, formatSize, formatDate } from "@/options/utils.ts";
@@ -28,7 +28,7 @@ interface IShowUserInfo extends IUserInfo {
 const siteHistoryData = shallowRef<IShowUserInfo[]>([]);
 const tableHeader = [
   { title: t("common.date"), key: "date", align: "center" },
-  { title: t("MyData.table.username"), key: "name", align: "center", sortable: false },
+  { title: t("common.username"), key: "name", align: "center", sortable: false },
   { title: t("MyData.table.levelName"), key: "levelName", align: "start", sortable: false },
   { title: t("MyData.table.userData"), key: "uploaded", align: "end", sortable: false },
   { title: t("levelRequirement.ratio"), key: "ratio", align: "end", sortable: false },
@@ -93,7 +93,7 @@ function exportSiteHistoryData() {
             {{ t("MyData.HistoryDataView.title") }} @ <SiteName :site-id="props.siteId!" class="" tag="span" />
           </v-toolbar-title>
           <template #append>
-            <v-btn icon="mdi-close" @click="showDialog = false" />
+            <v-btn icon="mdi-close" :title="t('common.dialog.close')" @click="showDialog = false" />
           </template>
         </v-toolbar>
       </v-card-title>
@@ -209,7 +209,7 @@ function exportSiteHistoryData() {
               :text="t('common.remove')"
               @click="deleteSiteUserInfo(tableSelected)"
             />
-            <NavButton color="info" icon="mdi-export" text="导出" @click="exportSiteHistoryData" />
+            <NavButton color="info" icon="mdi-export" :text="t('common.export')" @click="exportSiteHistoryData" />
             <v-spacer />
           </template>
         </v-data-table>
